@@ -434,8 +434,8 @@ class Sprintf
 							{
 								sign = n.fsgn();
 								n = n.fabs();
-								exponent = (Math.log(n) / Mathematics.LN10).floor();
-								n = n / Mathematics.exp(10, exponent);
+								exponent = (Math.log(n) / M.LN10).floor();
+								n = n / M.exp(10, exponent);
 								var t = .1; for (i in 0...precision - 1) t *= .1;
 								n = n.roundTo(t);
 							}
