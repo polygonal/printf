@@ -334,10 +334,11 @@ class Sprintf
 							{field:"precision", expr:precisionExpr },
 							{field:"flags", expr:Context.makeExpr(args.flags.toInt(), Context.currentPos()) }
 						]), pos:Context.currentPos() };
-						
+				
+				var valuePos = (args.pos > -1)?args.pos:argsIndex++;
 				var valueExpr = (knownArgs)?
-					fmtArgs[argsIndex++]:
-					{ expr:EArray(_args, Context.makeExpr(argsIndex++, _args.pos)), pos:_args.pos };
+					fmtArgs[valuePos]:
+					{ expr:EArray(_args, Context.makeExpr(valuePos, _args.pos)), pos:_args.pos };
 				if (valueExpr == null)
 					Context.error("Not enough arguments", _args.pos);
 					
@@ -471,7 +472,7 @@ class Sprintf
 					//}
 					
 					var token:FormatToken;
-					var params:FormatArgs = { flags:EnumFlags.ofInt(0), width:-1, precision:-1 };
+					var params:FormatArgs = { flags:EnumFlags.ofInt(0), pos:-1, width:-1, precision:-1 };
 					//{read flags: -+(space)#0
 					while (c == "-".code || c == "+".code || c == "#".code
 					              || c == "0".code || c == " ".code)
@@ -521,6 +522,28 @@ class Sprintf
 						{
 							params.width = c - "0".code + params.width * 10;
 							c = StringTools.fastCodeAt(fmt, i++);
+						}
+						// Check if number was a position, not a width
+						if (c == "$".code)
+						{
+							params.pos = params.width - 1;
+							params.width = -1;
+							c = StringTools.fastCodeAt(fmt, i++);
+							//re-check for width
+							if (c == "*".code)
+							{
+								params.width = null;
+								c = StringTools.fastCodeAt(fmt, i++);
+							}
+							else if (c.isDigit())
+							{
+								params.width = 0;
+								while (c.isDigit())
+								{
+									params.width = c - "0".code + params.width * 10;
+									c = StringTools.fastCodeAt(fmt, i++);
+								}
+							}
 						}
 					}
 					//}
@@ -931,6 +954,7 @@ class Sprintf
 typedef FormatArgs = 
 {
 	flags:haxe.EnumFlags<FormatFlags>,
+	pos:Int,
 	width:Null<Int>,
 	precision:Null<Int>
 }
