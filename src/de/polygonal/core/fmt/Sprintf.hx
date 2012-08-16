@@ -246,6 +246,11 @@ class Sprintf
 		{
 			switch(token)
 			{
+			case Unknown(str, pos):
+				var min = Context.getPosInfos(_fmt.pos).min + pos;
+				var max = min + 1;
+				var file = Context.getPosInfos(Context.currentPos()).file;
+				Context.error("invalid format specifier", Context.makePosition( { min:min, max:max, file:file } ));
 			case BareString(str):
 				outputArr.push(Context.makeExpr(str, Context.currentPos()));
 			case Tag(type, args):
@@ -594,8 +599,9 @@ class Sprintf
 					var type = dataTypeHash.get(c);
 					
 					if (type == null)
-						throw "malformed format string: no specifier found";
-					token = Tag(type, params);
+						token = Unknown(String.fromCharCode(c), i);
+					else
+						token = Tag(type, params);
 					
 					tokens.push(token);
 				}
@@ -631,6 +637,8 @@ class Sprintf
 		{
 			switch(token)
 			{
+			case Unknown(str, pos):
+				throw "invalid format specifier";
 			case BareString(str):
 				output += str;
 			case Tag(type, tagArgs):
@@ -976,6 +984,7 @@ private enum FormatToken
 {
 	BareString(str:String);
 	Tag(type:FormatDataType, args:FormatArgs);
+	Unknown(str:String, pos:Int);
 }
 
 private enum FormatDataType
