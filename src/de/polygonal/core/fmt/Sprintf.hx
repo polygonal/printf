@@ -424,9 +424,9 @@ class Sprintf
 		
 		if (knownArgs && fmtArgs.length > argsIndex + 1)
 		{
-			var min = Context.getPosInfos(fmtArgs[0].pos).min;
+			var min = Context.getPosInfos(fmtArgs[argsIndex].pos).min;
 			var max = Context.getPosInfos(fmtArgs[fmtArgs.length - 1].pos).max;
-			var file = Context.getPosInfos(fmtArgs[0].pos).file;
+			var file = Context.getPosInfos(Context.currentPos()).file;
 			var pos = Context.makePosition( { min:min, max:max, file:file } );
 			Context.warning("Extra parameters", pos);
 		}
