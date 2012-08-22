@@ -249,6 +249,30 @@ class Sprintf
 				Context.error("invalid format specifier", Context.makePosition( { min:min, max:max, file:file } ));
 			case BareString(str):
 				outputArr.push(Context.makeExpr(str, Context.currentPos()));
+			case Property(name):
+				var objExpr = (knownArgs)?
+					fmtArgs[0]:
+					{ expr:EArray(_args, Context.makeExpr(0, _args.pos)), pos:_args.pos };
+				
+				var valueExpr:Expr = null;
+				switch(objExpr.expr)
+				{
+				case EObjectDecl(fields):
+					for (field in fields)
+					{
+						if (field.field == name)
+						{
+							valueExpr = field.expr;
+							break;
+						}
+					}
+				default:
+				}
+				if (valueExpr == null)
+					valueExpr = { expr:EField(objExpr, name), pos:objExpr.pos };
+				
+				var outputExpr = macro Std.string($valueExpr);
+				outputArr.push(outputExpr);
 			case Tag(type, args):
 				var widthExpr = Context.makeExpr(args.width, Context.currentPos());
 				if (args.width == null)
@@ -473,132 +497,151 @@ class Sprintf
 					//}
 					
 					var token:FormatToken;
-					var params:FormatArgs = { flags:EnumFlags.ofInt(0), pos:-1, width:-1, precision:-1 };
-					//{read flags: -+(space)#0
-					while (c == "-".code || c == "+".code || c == "#".code
-					              || c == "0".code || c == " ".code)
-					{
-						if (c == "-".code)
-							params.flags.set(Minus);
-						else if (c == "+".code)
-							params.flags.set(Plus);
-						else if (c == "#".code)
-							params.flags.set(Sharp);
-						else if (c == "0".code)
-							params.flags.set(Zero);
-						else if (c == " ".code)
-							params.flags.set(Space);
-							
-						c = StringTools.fastCodeAt(fmt, i++);
-					}
-					//}
 					
-					//{Check for conflicting flags
-					if (params.flags.has(Minus) && params.flags.has(Zero))
+					//{named parameter
+					if (c == "(".code)
 					{
-						#if macro
-						Context.warning("warning: `0' flag ignored with '-' flag in printf format", Context.currentPos());
-						#end
-						params.flags.unset(Zero);
-					}
-					if (params.flags.has(Space) && params.flags.has(Plus))
-					{
-						#if macro
-						Context.warning("warning: ` ' flag ignored with '+' flag in printf format", Context.currentPos());
-						#end
-						params.flags.unset(Space);
-					}
-					//}
-					
-					//{read width: (number) or "*"
-					if (c == "*".code)
-					{
-						params.width = null;
-						c = StringTools.fastCodeAt(fmt, i++);
-					}
-					else if (c.isDigit())
-					{
-						params.width = 0;
-						while (c.isDigit())
+						var endPos = fmt.indexOf(")", i);
+						if (endPos == -1)
 						{
-							params.width = c - "0".code + params.width * 10;
-							c = StringTools.fastCodeAt(fmt, i++);
+							token = Unknown("named param", i);
 						}
-						// Check if number was a position, not a width
-						if (c == "$".code)
+						else
 						{
-							params.pos = params.width - 1;
-							params.width = -1;
-							c = StringTools.fastCodeAt(fmt, i++);
-							//re-check for width
-							if (c == "*".code)
-							{
-								params.width = null;
-								c = StringTools.fastCodeAt(fmt, i++);
-							}
-							else if (c.isDigit())
-							{
-								params.width = 0;
-								while (c.isDigit())
-								{
-									params.width = c - "0".code + params.width * 10;
-									c = StringTools.fastCodeAt(fmt, i++);
-								}
-							}
+							var paramName = fmt.substr(i, endPos - i);
+							i = endPos + 1;
+							token = Property(paramName);
 						}
 					}
 					//}
-					
-					//{read .precision: .(number) or ".*"
-					if (c == ".".code)
+					else
 					{
-						c = StringTools.fastCodeAt(fmt, i++);
+						var params:FormatArgs = { flags:EnumFlags.ofInt(0), pos:-1, width:-1, precision:-1 };
+						//{read flags: -+(space)#0
+						while (c == "-".code || c == "+".code || c == "#".code
+									|| c == "0".code || c == " ".code)
+						{
+							if (c == "-".code)
+								params.flags.set(Minus);
+							else if (c == "+".code)
+								params.flags.set(Plus);
+							else if (c == "#".code)
+								params.flags.set(Sharp);
+							else if (c == "0".code)
+								params.flags.set(Zero);
+							else if (c == " ".code)
+								params.flags.set(Space);
+								
+							c = StringTools.fastCodeAt(fmt, i++);
+						}
+						//}
+						
+						//{Check for conflicting flags
+						if (params.flags.has(Minus) && params.flags.has(Zero))
+						{
+							#if macro
+							Context.warning("warning: `0' flag ignored with '-' flag in printf format", Context.currentPos());
+							#end
+							params.flags.unset(Zero);
+						}
+						if (params.flags.has(Space) && params.flags.has(Plus))
+						{
+							#if macro
+							Context.warning("warning: ` ' flag ignored with '+' flag in printf format", Context.currentPos());
+							#end
+							params.flags.unset(Space);
+						}
+						//}
+						
+						//{read width: (number) or "*"
 						if (c == "*".code)
 						{
-							params.precision = null;
+							params.width = null;
 							c = StringTools.fastCodeAt(fmt, i++);
 						}
 						else if (c.isDigit())
 						{
-							params.precision = 0;
+							params.width = 0;
 							while (c.isDigit())
 							{
-								params.precision = c - "0".code + params.precision * 10;
+								params.width = c - "0".code + params.width * 10;
 								c = StringTools.fastCodeAt(fmt, i++);
 							}
+							// Check if number was a position, not a width
+							if (c == "$".code)
+							{
+								params.pos = params.width - 1;
+								params.width = -1;
+								c = StringTools.fastCodeAt(fmt, i++);
+								//re-check for width
+								if (c == "*".code)
+								{
+									params.width = null;
+									c = StringTools.fastCodeAt(fmt, i++);
+								}
+								else if (c.isDigit())
+								{
+									params.width = 0;
+									while (c.isDigit())
+									{
+										params.width = c - "0".code + params.width * 10;
+										c = StringTools.fastCodeAt(fmt, i++);
+									}
+								}
+							}
 						}
-						else
-							params.precision = 0;
-					}
-					//}
-					
-					//{read length: hlL
-					while (c == "h".code || c == "l".code || c == "L".code)
-					{
-						switch (c)
+						//}
+						
+						//{read .precision: .(number) or ".*"
+						if (c == ".".code)
 						{
-						case "h".code:
-							params.flags.set(LengthH);
-						case "l".code:
-							params.flags.set(Lengthl);
-						case "L".code:
-							params.flags.set(LengthL);
+							c = StringTools.fastCodeAt(fmt, i++);
+							if (c == "*".code)
+							{
+								params.precision = null;
+								c = StringTools.fastCodeAt(fmt, i++);
+							}
+							else if (c.isDigit())
+							{
+								params.precision = 0;
+								while (c.isDigit())
+								{
+									params.precision = c - "0".code + params.precision * 10;
+									c = StringTools.fastCodeAt(fmt, i++);
+								}
+							}
+							else
+								params.precision = 0;
 						}
-						c = StringTools.fastCodeAt(fmt, i++);
+						//}
+						
+						//{read length: hlL
+						while (c == "h".code || c == "l".code || c == "L".code)
+						{
+							switch (c)
+							{
+							case "h".code:
+								params.flags.set(LengthH);
+							case "l".code:
+								params.flags.set(Lengthl);
+							case "L".code:
+								params.flags.set(LengthL);
+							}
+							c = StringTools.fastCodeAt(fmt, i++);
+						}
+						//}
+						
+						//{read specifier: cdieEfgGosuxX
+						if(c == "E".code || c == "G".code)
+							params.flags.set(UpperCase);
+						
+						var type = dataTypeHash.get(c);
+						
+						if (type == null)
+							token = Unknown(String.fromCharCode(c), i);
+						else
+							token = Tag(type, params);
 					}
-					//}
-					
-					//{read specifier: cdieEfgGosuxX
-					if(c == "E".code || c == "G".code)
-						params.flags.set(UpperCase);
-					
-					var type = dataTypeHash.get(c);
-					
-					if (type == null)
-						token = Unknown(String.fromCharCode(c), i);
-					else
-						token = Tag(type, params);
-					
 					tokens.push(token);
 				}
 			}
@@ -637,6 +680,10 @@ class Sprintf
 				throw "invalid format specifier";
 			case BareString(str):
 				output += str;
+			case Property(name):
+				if (!Reflect.hasField(args[0], name))
+					throw "no field named " + name;
+				output += Std.string(Reflect.field(args[0], name));
 			case Tag(type, tagArgs):
 				tagArgs.width = (tagArgs.width != null)?tagArgs.width:cast(args[argIndex++], Int);
 				tagArgs.precision = (tagArgs.precision != null)?tagArgs.precision:cast(args[argIndex++], Int);
@@ -994,6 +1041,7 @@ private enum FormatToken
 {
 	BareString(str:String);
 	Tag(type:FormatDataType, args:FormatArgs);
+	Property(name:String);
 	Unknown(str:String, pos:Int);
 }
 
