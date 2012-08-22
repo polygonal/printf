@@ -234,6 +234,14 @@ class Sprintf
 		
 		var knownArgs = fmtArgs != null;
 		var argsIndex = 0;
+		var usedArgs:Array<Bool> = new Array();
+		if (knownArgs)
+		{
+			for (i in 0...fmtArgs.length)
+			{
+				usedArgs.push(false);
+			}
+		}
 		
 		if (_instance == null)
 			_instance = new Sprintf();
@@ -253,6 +261,8 @@ class Sprintf
 				var objExpr = (knownArgs)?
 					fmtArgs[0]:
 					{ expr:EArray(_args, Context.makeExpr(0, _args.pos)), pos:_args.pos };
+					
+				usedArgs[0] = true;
 				
 				var valueExpr:Expr = null;
 				switch(objExpr.expr)
@@ -367,6 +377,8 @@ class Sprintf
 				if (valueExpr == null)
 					Context.error("Not enough arguments", _args.pos);
 					
+				usedArgs[valuePos] = true;
+				
 				var value:Dynamic;
 				
 				switch(valueExpr.expr)
@@ -442,14 +454,32 @@ class Sprintf
 			}
 		}
 		
-		if (knownArgs && fmtArgs.length > argsIndex + 1)
+		if(Context.defined("verbose") && knownArgs)
 		{
-			var min = Context.getPosInfos(fmtArgs[argsIndex].pos).min;
-			var max = Context.getPosInfos(fmtArgs[fmtArgs.length - 1].pos).max;
-			var file = Context.getPosInfos(Context.currentPos()).file;
-			var pos = Context.makePosition( { min:min, max:max, file:file } );
-			Context.warning("Extra parameters", pos);
+			var lastUnused = false;
+			var unusedIntervals:Array<{min:Int, max:Int, file:String}> = new Array();
+			for (i in 0...usedArgs.length)
+			{
+				if (usedArgs[i] == false)
+				{
+					if (lastUnused)
+						unusedIntervals[unusedIntervals.length - 1].max = Context.getPosInfos(fmtArgs[i].pos).max;
+					else
+						unusedIntervals.push(Context.getPosInfos(fmtArgs[i].pos));
+					
+					lastUnused = true;
+				}
+				else
+				{
+					lastUnused = false;
+				}
+			}
+			for (interval in unusedIntervals)
+			{
+				Context.warning("Unused Parameters", Context.makePosition(interval));
+			}
 		}
+		
 		
 		var returnStrExpr:Expr = outputArr[outputArr.length - 1];
 		
