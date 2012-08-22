@@ -42,10 +42,6 @@ using de.polygonal.core.fmt.NumberFormat;
 using de.polygonal.core.math.Mathematics;
 using de.polygonal.core.fmt.ASCII;
 
-//using Std;
-
-//TODO unsigned flag
-
 /**
  * <p>A C sprintf implementation.</p>
  * <p>See <a href="http://www.cplusplus.com/reference/clibrary/cstdio/sprintf.html" target="_blank">http://www.cplusplus.com/reference/clibrary/cstdio/sprintf.html</a> for a complete reference.</p>
@@ -756,10 +752,24 @@ class Sprintf
 			(args.width > output.length) ? StringTools.lpad(output, (args.flags.has(Zero))?"0":" " , args.width) : output;
 	}
 	
-	public inline function formatUnsignedDecimal(x:Int, args:FormatArgs):String
+	public inline function formatUnsignedDecimal(value:Int, args:FormatArgs):String
 	{
-		// TODO: Do something different for unsigned integers
-		return formatSignedDecimal(x, args);
+		var output = "";
+		if (value >= 0)
+			output = formatSignedDecimal(value, args);
+		else
+		{
+			var x = haxe.Int64.make(haxe.Int32.ofInt(0), haxe.Int32.ofInt(value));
+			output = haxe.Int64.toStr(x);
+			
+			if (args.precision > 1 && output.length < args.precision)
+			{
+				output = StringTools.lpad(output, "0", args.precision);
+			}
+			output = _padNumber(output, value, args.flags, args.width);
+		}
+		
+		return output;
 	}
 	
 	public inline function formatNaturalFloat(value:Float, args:FormatArgs):String
