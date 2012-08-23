@@ -287,6 +287,8 @@ class Sprintf
 				var widthExpr = Context.makeExpr(args.width, Context.currentPos());
 				if (args.width == null)
 				{
+					usedArgs[argsIndex] = true;
+					
 					widthExpr = (knownArgs)?
 						fmtArgs[argsIndex++]:
 						{ expr:ECheckType( { expr:EArray(_args, Context.makeExpr(argsIndex++, _args.pos)), pos:_args.pos }, TPath( { sub:null, params:[], pack:[], name:"Int" } )), pos:Context.currentPos() };
@@ -326,6 +328,8 @@ class Sprintf
 				var precisionExpr = Context.makeExpr(args.precision, Context.currentPos());
 				if (args.precision == null)
 				{
+					usedArgs[argsIndex] = true;
+					
 					precisionExpr = (knownArgs)?
 						fmtArgs[argsIndex++]:
 						{ expr:ECheckType( { expr:EArray(_args, Context.makeExpr(argsIndex++, _args.pos)), pos:_args.pos }, TPath( { sub:null, params:[], pack:[], name:"Int" } )), pos:Context.currentPos() };
