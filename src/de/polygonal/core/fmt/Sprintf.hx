@@ -30,6 +30,7 @@
  */
 package de.polygonal.core.fmt;
 
+import de.polygonal.core.math.Mathematics;
 import haxe.EnumFlags;
 
 #if macro
@@ -666,7 +667,7 @@ class Sprintf
 						//}
 						
 						//{read specifier: cdieEfgGosuxX
-						if(c == "E".code || c == "G".code)
+						if(c == "E".code || c == "G".code || c == "X".code)
 							params.flags.set(UpperCase);
 						
 						var type = dataTypeHash.get(c);
@@ -879,9 +880,6 @@ class Sprintf
 		var output = "";
 		if (args.precision == -1) args.precision = 6;
 		
-		var a = 4.21 / Math.pow(0.1, args.precision);
-		
-		
 		var sign:Int;
 		var exponent:Int;
 		
@@ -900,8 +898,8 @@ class Sprintf
 		{
 			sign = value.fsgn();
 			value = value.fabs();
-			exponent = (Math.log(value) / Mathematics.LN10).floor();
-			value = value / Mathematics.exp(10, exponent);
+			exponent = Math.floor(Math.log(value) / Mathematics.LN10);
+			value = value / Math.pow(10, exponent);
 			var p = Math.pow(0.1, args.precision);
 			
 			value = value.roundTo(p);
@@ -910,7 +908,7 @@ class Sprintf
 		output += (sign < 0 ? "-" : args.flags.has(Plus) ? "+" : "");
 		
 		if (value != 0)
-			output += Std.string(value).substr(0, args.precision + 2);
+			output += StringTools.rpad(Std.string(value).substr(0, args.precision + 2), "0", args.precision + 2);
 		output += args.flags.has(UpperCase) ? "E" : "e";
 		output += exponent >= 0 ? "+" : "-";
 		
@@ -925,6 +923,7 @@ class Sprintf
 	public inline function formatSignedDecimal(value:Int, args:FormatArgs):String
 	{
 		var output:String = "";
+		
 		if (args.precision == 0 && value == 0)
 			output = "";
 		else
@@ -932,24 +931,16 @@ class Sprintf
 			if (args.flags.has(LengthH))
 				value &= 0xffff;
 				
-			output = Std.string(value);
+			output = Std.string(Mathematics.abs(value));
 				
 			if (args.precision > 1 && output.length < args.precision)
 			{
-				//output = _lpad(output, "0", args.precision - output.length - 2);
-				if (value > 0)
-				{
-					for (i in 0...args.precision - 1)
-						output = "0" + output;
-				}
-				else
-				{
-					output = "0" + -value;
-					for (i in 0...args.precision - 2)
-						output = "0" + output;
-					output = "-" + output;
-				}
+				output = StringTools.lpad(output, "0", args.precision);
 			}
+			if (args.flags.has(Zero))
+					output = StringTools.lpad(output, "0", (value<0)?args.width-1:args.width);
+			if (value < 0)
+				output = "-" + output;
 		}
 		if (value >= 0)
 		{
@@ -960,7 +951,16 @@ class Sprintf
 				output = " " + output;
 		}
 		
-		return _padNumber(output, value, args.flags, args.width);
+		if (args.flags.has(Minus))
+		{
+			output = StringTools.rpad(output, " ", args.width);
+		}
+		else
+		{
+			output = StringTools.lpad(output, " ", args.width);
+		}
+		
+		return output;
 	}
 	
 	public inline function formatString(x:String, args:FormatArgs):String
@@ -979,7 +979,7 @@ class Sprintf
 		return output;
 	}
 	
-	public inline function formatNormalFloat(x:Float, args:FormatArgs):String
+	public inline function formatNormalFloat(value:Float, args:FormatArgs):String
 	{
 		var output:String;
 		//set default precision if not specified
@@ -987,23 +987,34 @@ class Sprintf
 		
 		if (args.precision == 0)
 		{
-			output = Std.string(x.round());
+			output = Std.string(value.round().abs());
 			//force decimal point?
 			if (args.flags.has(Sharp)) output += ".";
 		}
 		else
 		{
-			x = x.roundTo(Math.pow(.1, args.precision));
-			output = x.toFixed(args.precision);
+			value = value.roundTo(Math.pow(.1, args.precision));
+			output = value.fabs().toFixed(args.precision);
 		}
 		
-		if (args.flags.has(Plus) && x >= 0)
+		if (args.flags.has(Plus) && value >= 0)
 			output = "+" + output;
 		else
-		if (args.flags.has(Space) && x >= 0)
+		if (args.flags.has(Space) && value >= 0)
 			output = " " + output;
 		
-		return _padNumber(output, x, args.flags, args.width);
+		if (args.flags.has(Zero))
+			output = StringTools.lpad(output, "0", (value < 0)?args.width - 1:args.width);
+		
+		if (value < 0)
+			output = "-" + output;
+		
+		if (args.flags.has(Minus))
+			output = StringTools.rpad(output, " ", args.width);
+		else
+			output = StringTools.lpad(output, " ", args.width);
+		
+		return output;
 	}
 	
 	public inline function formatCharacter(x:Int, args:FormatArgs):String
