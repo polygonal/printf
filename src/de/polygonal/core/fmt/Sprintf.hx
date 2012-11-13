@@ -368,11 +368,14 @@ class Sprintf
 						Context.error("precision must be an integer", precisionExpr.pos);
 				}
 				
+				var flagsIntExpr = Context.makeExpr(args.flags.toInt(), Context.currentPos());
+				
 				var argsExpr = { expr:EObjectDecl(
 						[
 							{field:"width", expr:widthExpr },
 							{field:"precision", expr:precisionExpr },
-							{field:"flags", expr:Context.makeExpr(args.flags.toInt(), Context.currentPos()) }
+							{field:"flags", expr:macro haxe.EnumFlags.ofInt($flagsIntExpr) },
+							{field:"pos", expr:Context.makeExpr(args.pos, Context.currentPos()) }
 						]), pos:Context.currentPos() };
 				
 				var valuePos = (args.pos > -1)?args.pos:argsIndex++;
@@ -498,7 +501,7 @@ class Sprintf
 		var returnBlock:Expr = macro {
 			if (untyped (de.polygonal.core.fmt.Sprintf._instance) == null)
 				untyped de.polygonal.core.fmt.Sprintf._instance = new de.polygonal.core.fmt.Sprintf();
-			var __sprintFInstance = untyped de.polygonal.core.fmt.Sprintf._instance;
+			var __sprintFInstance:de.polygonal.core.fmt.Sprintf = untyped de.polygonal.core.fmt.Sprintf._instance;
 			$returnStrExpr;
 		};
 		
