@@ -844,7 +844,13 @@ class Sprintf
 			output = formatSignedDecimal(value, args);
 		else
 		{
-			var x = haxe.Int64.make(haxe.Int32.ofInt(0), haxe.Int32.ofInt(value));
+			var x =
+			#if haxe3
+			haxe.Int64.make(0, value);
+			#else
+			haxe.Int64.make(haxe.Int32.ofInt(0), haxe.Int32.ofInt(value));
+			#end
+			
 			output = haxe.Int64.toStr(x);
 			
 			if (args.precision > 1 && output.length < args.precision)
