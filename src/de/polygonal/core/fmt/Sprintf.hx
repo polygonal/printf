@@ -44,7 +44,7 @@ using haxe.Int32;
 
 /**
  * <p>A C sprintf implementation.</p>
- * <p>See <a href="http://www.cplusplus.com/reference/clibrary/cstdio/sprintf.html" target="_blank">http://www.cplusplus.com/reference/clibrary/cstdio/sprintf.html</a> for a complete reference.</p>
+ * <p>See <a href="http://www.cplusplus.com/reference/clibrary/cstdio/printf/" target="_blank">http://www.cplusplus.com/reference/clibrary/cstdio/printf/</a> for a complete reference.</p>
  */
 class Sprintf
 {
