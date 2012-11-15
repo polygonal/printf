@@ -40,6 +40,7 @@ import haxe.macro.Type;
 
 using de.polygonal.core.math.Mathematics;
 using de.polygonal.core.fmt.ASCII;
+using haxe.Int32;
 
 /**
  * <p>A C sprintf implementation.</p>
@@ -761,11 +762,13 @@ class Sprintf
 				value &= 0xffff;
 			
 			//toBin()
-			while (value > 0)
+			var i = value.ofInt();
+			do
 			{
-				output = (((value & 1) > 0) ? '1' : '0') + output;
-				value >>>= 1;
+				output = ((i.and(1.ofInt()).compare(0.ofInt()) > 0) ? '1' : '0') + output;
+				i = haxe.Int32.ushr(i, 1);
 			}
+			while (i.compare(0.ofInt()) > 0);
 			
 			if (args.precision > 1)
 			{
