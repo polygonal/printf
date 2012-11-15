@@ -30,7 +30,6 @@
  */
 package de.polygonal.core.fmt;
 
-import de.polygonal.core.math.Mathematics;
 import haxe.EnumFlags;
 
 #if macro
@@ -39,7 +38,6 @@ import haxe.macro.Context;
 import haxe.macro.Type;
 #end
 
-using de.polygonal.core.fmt.NumberFormat;
 using de.polygonal.core.math.Mathematics;
 using de.polygonal.core.fmt.ASCII;
 
@@ -516,7 +514,7 @@ class Sprintf
 		var i = 0;
 		var c = 0;
 		var tokens:Array<FormatToken> = new Array();
-		while(i < length)
+		while (i < length)
 		{
 			var c = StringTools.fastCodeAt(fmt, i++);
 			if (c == "%".code)
@@ -679,6 +677,7 @@ class Sprintf
 							token = Unknown(String.fromCharCode(c), i);
 						else
 							token = Tag(type, params);
+						//}
 					}
 					tokens.push(token);
 				}
@@ -761,7 +760,13 @@ class Sprintf
 			if (args.flags.has(LengthH))
 				value &= 0xffff;
 			
-			output = value.toBin();
+			//toBin()
+			while (value > 0)
+			{
+				output = (((value & 1) > 0) ? '1' : '0') + output;
+				value >>>= 1;
+			}
+			
 			if (args.precision > 1)
 			{
 				if (args.precision > output.length)
@@ -787,10 +792,16 @@ class Sprintf
 			output = "";
 		else
 		{
-			if (args.flags.has(LengthH))
-				value &= 0xffff;
+			if (args.flags.has(LengthH)) value &= 0xffff;
 			
-			output = value.toOct();
+			//toOct()
+			output = '';
+			do
+			{
+				output = (value & 7) + output;
+				value >>>= 3;
+			}
+			while (value > 0);
 			
 			if (args.flags.has(Sharp)) output = "0" + output;
 			
@@ -819,7 +830,7 @@ class Sprintf
 			if (args.flags.has(LengthH))
 				value &= 0xffff;
 			
-			output = value.toHex();
+			output = StringTools.hex(value);
 			if (args.precision > 1 && output.length < args.precision)
 			{
 				output = StringTools.lpad(output, "0", args.precision);
@@ -857,7 +868,7 @@ class Sprintf
 			{
 				output = StringTools.lpad(output, "0", args.precision);
 			}
-			output = _padNumber(output, value, args.flags, args.width);
+			output = padNumber(output, value, args.flags, args.width);
 		}
 		
 		return output;
@@ -1002,8 +1013,28 @@ class Sprintf
 		}
 		else
 		{
+			//toFixed()
 			value = value.roundTo(Math.pow(.1, args.precision));
-			output = value.fabs().toFixed(args.precision);
+			var decimalPlaces = args.precision;
+			if (Math.isNaN(value))
+				output = 'NaN';
+			else
+			{
+				var t = M.exp(10, decimalPlaces);
+				output = Std.string(Std.int(value * t) / t);
+				var i = output.indexOf('.');
+				if (i != -1)
+				{
+					for (i in output.substr(i + 1).length...decimalPlaces)
+						output += '0';
+				}
+				else
+				{
+					output += '.';
+					for (i in 0...decimalPlaces)
+						output += '0';
+				}
+			}
 		}
 		
 		if (args.flags.has(Plus) && value >= 0)
@@ -1041,7 +1072,7 @@ class Sprintf
 		return output;
 	}
 	
-	inline function _padNumber(x:String, n:Float, flags:EnumFlags<FormatFlags>, width:Int):String
+	inline function padNumber(x:String, n:Float, flags:EnumFlags<FormatFlags>, width:Int):String
 	{
 		var k = x.length;
 		if (width > 0 && k < width)
@@ -1070,7 +1101,7 @@ class Sprintf
 	}
 }
 
-typedef FormatArgs = 
+private typedef FormatArgs =
 {
 	flags:haxe.EnumFlags<FormatFlags>,
 	pos:Int,
@@ -1078,7 +1109,7 @@ typedef FormatArgs =
 	precision:Null<Int>
 }
 
-enum FormatFlags
+private enum FormatFlags
 {
 	Minus;
 	Plus;
@@ -1107,6 +1138,7 @@ private enum FormatDataType
 	FmtPointer;
 	FmtNothing;
 }
+
 private enum IntegerType
 {
 	ICharacter;
@@ -1116,6 +1148,7 @@ private enum IntegerType
 	IHex;
 	IBin;
 }
+
 private enum FloatType
 {
 	FNormal;
