@@ -52,63 +52,54 @@ using haxe.Int32;
  * <p>If there is more than one argument (or if the only argument passed is not an array), Sprintf will use the arguments as is.</p>
  * <p><pre class="prettyprint">
  * Sprintf.format("This is %s", "acceptable");
- * Sprintf.format("This is also %s", ["acceptable"]);
- * </pre></p>
+ * Sprintf.format("This is also %s", ["acceptable"]);</pre></p>
  *
  * <h1>Numbered Parameters</h1>
  * <p>Arguments can now be accessed by number via the following format: `%[argnumber$][flags][width][.precision][length]specifier`</p>
  * <p><b>Note: The number 1 refers to the first argument, not 0</b></p>
  * <p><pre class="prettyprint">
- * Sprintf.format("%s is %d years old, and his name is %1$s", ["Joe", 32]);
- * </pre></p>
+ * Sprintf.format("%s is %d years old, and his name is %1$s", ["Joe", 32]);</pre></p>
  *
  * <h1>Named Parameters</h1>
  * <p>Arguments can now be specified as named properties of an object using the following format: `%(name)`. Named arguments will always refer to the first parameter.</p>
  * <p>Named Parameters can even be used in conjunction with other argument types:</p>
  * <p><pre class="prettyprint">
- * Sprintf.format("%(name) is %(age), and wants to be a %2$s", {name:"Joe", age:32}, "Programmer");
- * </pre></p>
+ * Sprintf.format("%(name) is %(age), and wants to be a %2$s", {name:"Joe", age:32}, "Programmer");</pre></p>
  * 
  * <h1>Compile-Time Checks</h1>
  * <p>If the format string is inline, several checks can be done at compile time, and they can issue an error or warning during the compile.</p>
  * <h1>Format String Verification</h1>
  * <p>An incorrect format string will throw an error:</p>
  * <p><pre class="prettyprint">
- * Sprintf.format("%m", 3); // Compile-time error: invalid format specifier
- * </pre></p>
+ * Sprintf.format("%m", 3); // Compile-time error: invalid format specifier</pre></p>
  *
  * <h1>Not Enough Arguments</h1>
  * <p>Compilation will fail if there are not enough arguments passed for the number of specifiers given</p>
  * <p><pre class="prettyprint">
- * Sprintf.format("%s %s %s", "bob", "joe"); // Compile-time error: Not enough arguments
- * </pre></p>
+ * Sprintf.format("%s %s %s", "bob", "joe"); // Compile-time error: Not enough arguments</pre></p>
  *
  * <h1>Width and Precision</h1>
  * <p>Widths and precisions are checked at compile time when possible</p>
  * <p><pre class="prettyprint">
  * Sprintf.format("Age/3 = %.*f", 10.1, 2); // Compile-time error: precision must be an integer
- * Sprintf.format("Age/3 = %*f", 10.1, 4); // Compile-time error: width must be an integer
- * </pre></p>
+ * Sprintf.format("Age/3 = %*f", 10.1, 4); // Compile-time error: width must be an integer</pre></p>
  *
  * <h1>Number Types</h1>
  * <p>The value's type is checked whenever possible</p>
  * <p><pre class="prettyprint">
  * Sprintf.format("%f", "5"); // Compile-time error: the value must be a number
- * Sprintf.format("%d", 4.1); // Complile-time error: the value must be an integer
- * </pre></p>
+ * Sprintf.format("%d", 4.1); // Complile-time error: the value must be an integer</pre></p>
  *
  * <h1>Flag Mis-matches (Warning)</h1>
  * <p>A compiler warning will be issued for flag combinations that don't make sense</p>
  * <p><pre class="prettyprint">
  * Sprintf.format("% +f", 3.1);
- * // Compile-time warning: ` ' flag ignored with '+' flag in printf format
- * </pre></p>
+ * // Compile-time warning: ` ' flag ignored with '+' flag in printf format</pre></p>
  *
  * <h1>Unused Arguments (Warning)</h1>
  * <p>If compiled with the verbose flag, a compiler warning will be issued for arguments that are left unused</p>
  * <p><pre class="prettyprint">
- * Sprintf.format("%s", "first", "second"); // Compile-time warning: Unused parameters
- * </pre></p>
+ * Sprintf.format("%s", "first", "second"); // Compile-time warning: Unused parameters</pre></p>
  */
 class Sprintf
 {
