@@ -819,6 +819,15 @@ class Sprintf
 				value &= 0xffff;
 			
 			//toBin()
+			#if haxe3
+			var i = value;
+			do
+			{
+				output = ((i & 1) > 0 ? '1' : '0') + output;
+				i >>>= 1;
+			}
+			while (i > 0);
+			#else
 			var i = value.ofInt();
 			do
 			{
@@ -826,6 +835,7 @@ class Sprintf
 				i = haxe.Int32.ushr(i, 1);
 			}
 			while (i.compare(0.ofInt()) > 0);
+			#end
 			
 			if (args.precision > 1)
 			{
