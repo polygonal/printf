@@ -31,6 +31,7 @@
 package de.polygonal.core.fmt;
 
 import haxe.EnumFlags;
+import haxe.ds.IntMap;
 
 #if macro
 import haxe.macro.Expr;
@@ -103,13 +104,13 @@ using haxe.Int32;
  */
 class Sprintf
 {
-	var formatHash:IntHash< Dynamic >;
+	var formatHash:IntMap< Dynamic >;
 	
-	static var dataTypeHash:IntHash<FormatDataType> = makeDataTypeHash();
+	static var dataTypeHash:IntMap<FormatDataType> = makeDataTypeHash();
 	
 	private static function makeDataTypeHash()
 	{
-		var hash:IntHash<FormatDataType> = new IntHash();
+		var hash:IntMap<FormatDataType> = new IntMap();
 		hash.set("i".code, FmtInteger(ISignedDecimal));
 		hash.set("d".code, FmtInteger(ISignedDecimal));
 		hash.set("u".code, FmtInteger(IUnsignedDecimal));
@@ -135,20 +136,20 @@ class Sprintf
 	
 	static var _instance:Sprintf = null;
 	
-	var formatIntFuncHash:IntHash < Int->FormatArgs->String >;
-	var formatFloatFuncHash:IntHash < Float->FormatArgs->String >;
-	var formatStringFuncHash:IntHash < String->FormatArgs->String >;
+	var formatIntFuncHash:IntMap < Int->FormatArgs->String >;
+	var formatFloatFuncHash:IntMap < Float->FormatArgs->String >;
+	var formatStringFuncHash:IntMap < String->FormatArgs->String >;
 	
 	#if macro
-	var formatIntFuncNameHash:IntHash < String>;
-	var formatFloatFuncNameHash:IntHash < String >;
-	var formatStringFuncNameHash:IntHash < String > ;
+	var formatIntFuncNameHash:IntMap < String>;
+	var formatFloatFuncNameHash:IntMap < String >;
+	var formatStringFuncNameHash:IntMap < String > ;
 	
 	function makeNameHashes()
 	{
-		formatIntFuncNameHash = new IntHash();
-		formatFloatFuncNameHash = new IntHash();
-		formatStringFuncNameHash = new IntHash();
+		formatIntFuncNameHash = new IntMap();
+		formatFloatFuncNameHash = new IntMap();
+		formatStringFuncNameHash = new IntMap();
 		
 		formatIntFuncNameHash.set(std.Type.enumIndex(ISignedDecimal), "formatSignedDecimal");
 		formatIntFuncNameHash.set(std.Type.enumIndex(IUnsignedDecimal), "formatUnsignedDecimal");
@@ -167,9 +168,9 @@ class Sprintf
 	
 	function new()
 	{
-		formatIntFuncHash = new IntHash();
-		formatFloatFuncHash = new IntHash();
-		formatStringFuncHash = new IntHash();
+		formatIntFuncHash = new IntMap();
+		formatFloatFuncHash = new IntMap();
+		formatStringFuncHash = new IntMap();
 		
 		formatIntFuncHash.set(std.Type.enumIndex(ISignedDecimal), formatSignedDecimal);
 		formatIntFuncHash.set(std.Type.enumIndex(IUnsignedDecimal), formatUnsignedDecimal);
