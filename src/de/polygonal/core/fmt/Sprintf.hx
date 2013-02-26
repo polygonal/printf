@@ -307,7 +307,7 @@ class Sprintf
 		{
 			switch(token)
 			{
-			case Unknown(str, pos):
+			case Unknown(_, pos):
 				var min = Context.getPosInfos(_fmt.pos).min + pos;
 				var max = min + 1;
 				var file = Context.getPosInfos(Context.currentPos()).file;
@@ -359,7 +359,7 @@ class Sprintf
 						{
 						case CInt(value):
 							args.width = Std.parseInt(value);
-						case CIdent(value):
+						case CIdent(_):
 							switch(Context.typeof(widthExpr))
 							{
 							case TInst(type, _):
@@ -400,7 +400,7 @@ class Sprintf
 						{
 						case CInt(value):
 							args.precision = Std.parseInt(value);
-						case CIdent(value):
+						case CIdent(_):
 							switch(Context.typeof(precisionExpr))
 							{
 							case TInst(type, _):
@@ -773,7 +773,7 @@ class Sprintf
 		{
 			switch(token)
 			{
-			case Unknown(str, pos):
+			case Unknown(_, _):
 				throw "invalid format specifier";
 			case BareString(str):
 				output += str;
