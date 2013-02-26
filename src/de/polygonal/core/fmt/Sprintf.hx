@@ -233,7 +233,9 @@ class Sprintf
 				var min = Context.getPosInfos(_passedArgs[0].pos).min;
 				var max = Context.getPosInfos(_passedArgs[_passedArgs.length - 1].pos).max;
 				var file = Context.getPosInfos(Context.currentPos()).file;
-				_args = { expr:EArrayDecl(_passedArgs), pos:Context.makePosition( { min:min, max:max, file:file } ) };
+				var pos = Context.makePosition( { min:min, max:max, file:file } );
+				var dynArrayType:ComplexType = macro : Array<Dynamic>;
+				_args = { expr: ECheckType({ expr:EArrayDecl(_passedArgs), pos:pos }, dynArrayType), pos: pos };
 			}
 			else
 				_args = _passedArgs[0];
