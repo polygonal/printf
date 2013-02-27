@@ -41,7 +41,6 @@ import haxe.macro.Type;
 
 using de.polygonal.core.math.Mathematics;
 using de.polygonal.core.fmt.ASCII;
-using haxe.Int32;
 
 /**
  * <p>A C sprintf implementation.</p>
@@ -822,7 +821,6 @@ class Sprintf
 				value &= 0xffff;
 			
 			//toBin()
-			#if haxe3
 			var i = value;
 			do
 			{
@@ -830,15 +828,6 @@ class Sprintf
 				i >>>= 1;
 			}
 			while (i > 0);
-			#else
-			var i = value.ofInt();
-			do
-			{
-				output = ((i.and(1.ofInt()).compare(0.ofInt()) > 0) ? '1' : '0') + output;
-				i = haxe.Int32.ushr(i, 1);
-			}
-			while (i.compare(0.ofInt()) > 0);
-			#end
 			
 			if (args.precision > 1)
 			{
@@ -928,12 +917,7 @@ class Sprintf
 			output = formatSignedDecimal(value, args);
 		else
 		{
-			var x =
-			#if haxe3
-			haxe.Int64.make(0, value);
-			#else
-			haxe.Int64.make(haxe.Int32.ofInt(0), haxe.Int32.ofInt(value));
-			#end
+			var x = haxe.Int64.make(0, value);
 			
 			output = haxe.Int64.toStr(x);
 			
