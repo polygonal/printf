@@ -220,7 +220,7 @@ class Sprintf
 		{
 			var makeArray = true;
 			if(_passedArgs.length == 1)
-				switch(Context.typeof(_passedArgs[0]))
+				switch(Context.typeof({expr:ECheckType(_passedArgs[0],(macro : Array<Dynamic>)), pos:_passedArgs[0].pos}))
 				{
 				case TInst(t, _):
 					if (t.get().name == "Array")
@@ -234,12 +234,15 @@ class Sprintf
 				var max = Context.getPosInfos(_passedArgs[_passedArgs.length - 1].pos).max;
 				var file = Context.getPosInfos(Context.currentPos()).file;
 				var pos = Context.makePosition( { min:min, max:max, file:file } );
-				var dynArrayType:ComplexType = macro : Array<Dynamic>;
-				_args = { expr: ECheckType({ expr:EArrayDecl(_passedArgs), pos:pos }, dynArrayType), pos: pos };
+				_args = { expr:EArrayDecl(_passedArgs), pos:pos };
 			}
 			else
 				_args = _passedArgs[0];
 		}
+		
+		// Force _args array to be typed as Array<Dynamic>
+		var dynArrayType:ComplexType = macro : Array<Dynamic>;
+		_args = { expr:ECheckType(_args, dynArrayType), pos:_args.pos };
 		
 		switch(Context.typeof(_args))
 		{
