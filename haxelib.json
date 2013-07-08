@@ -5,6 +5,6 @@
 	"url": "https://github.com/polygonal/printf",
 	"tags": ["cross", "utility"],
 	"contributors" : ["mbaczynski"],
-	"version": "1.0.0",
+	"version": "1.0.0-beta",
 	"releasenote": "Initial release"
 }

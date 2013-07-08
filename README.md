@@ -5,7 +5,6 @@ C printf for Haxe.
 
 See [cplusplus.com](http://www.cplusplus.com/reference/clibrary/cstdio/printf/) for a complete reference.
 
-
 ## New features
 
 ### Variable number of arguments
@@ -84,3 +83,9 @@ If compiled with `-D verbose', a compiler warning will be issued for arguments t
 ````As3
 Printf.format("%s", "first", "second"); //compile-time warning: unused parameters
 ````
+
+## Changelog
+
+### 1.0.0-beta (released 2013-07-08)
+
+ * Initial release.
