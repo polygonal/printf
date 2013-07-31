@@ -527,6 +527,10 @@ class Printf
 			init();
 		}
 		
+		for (i in 0...args.length)
+			if (args[i] == null)
+				args[i] = "null";
+		
 		var output = "";
 		var argIndex = 0;
 		var tokens = tokenize(fmt);
