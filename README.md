@@ -86,6 +86,10 @@ Printf.format("%s", "first", "second"); //compile-time warning: unused parameter
 
 ## Changelog
 
+### 1.0.1-beta (released 2013-11-04)
+
+ * fixed: double minus for %f
+
 ### 1.0.0-beta (released 2013-07-08)
 
  * Initial release.
