@@ -1065,9 +1065,6 @@ class Printf
 		if (flags.has(Zero))
 			output = lpad(output, "0", (value < 0) ? width - 1 : width);
 		
-		if (value < 0)
-			output = "-" + output;
-		
 		if (flags.has(Minus))
 			output = rpad(output, " ", width);
 		else
