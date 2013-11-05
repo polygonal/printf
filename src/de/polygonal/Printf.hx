@@ -1207,23 +1207,14 @@ class Printf
 	inline static function roundTo(x:Float, y:Float):Float
 	{
 		//rounds x to interval y
-		var min = 
-		#if cpp
-		//warning: this decimal constant is unsigned only in ISO C90
-		-0x7fffffff;
-		#else
-		0x80000000;
-		#end
-		
-		#if js
+		#if (js || flash)
 		return Math.round(x / y) * y;
-		#elseif flash9
-		var t:Float = untyped __global__["Math"].round((x / y));
-		return t * y;
 		#else
+		//warning: this decimal constant is unsigned only in ISO C90
+		var min = -0x7fffffff;
 		var t = x / y;
 		if (t < 0x7fffffff && t > min)
-			return round(t) * y;
+			return Math.round(t) * y;
 		else
 		{
 			t = (t > 0 ? t + .5 : (t < 0 ? t - .5 : t));
