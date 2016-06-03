@@ -823,7 +823,7 @@ class Printf
 	
 	static function formatOctal(value:Int, args:FormatArgs):String
 	{
-		var output  = "";
+		var output = "";
 		var flags = args.flags;
 		var precision = args.precision;
 		var width = args.width;
@@ -834,7 +834,13 @@ class Printf
 		{
 			if (flags.has(LengthH)) value &= 0xffff;
 			
-			output = toOct(value);
+			var t = value;
+			do
+			{
+				output = (t & 7) + output;
+				t >>>= 3;
+			}
+			while (t > 0);
 			
 			if (flags.has(Sharp)) output = "0" + output;
 			
@@ -846,7 +852,7 @@ class Printf
 		if (flags.has(Minus))
 			(width > output.length) ? rpad(output, " ", width) : output;
 		else
-			(width > output.length) ? lpad(output, (flags.has(Zero)?"0":" ") , width) : output;
+			(width > output.length) ? lpad(output, (flags.has(Zero) ? "0" :" ") , width) : output;
 	}
 	
 	static function formatHexadecimal(value:Int, args:FormatArgs):String
@@ -1160,20 +1166,6 @@ class Printf
 		var t = "";
 		for (i in 0...l - k) t += c;
 		return s + t;
-	}
-	
-	//TODO optimize
-	static function toOct(x:Int):String
-	{
-		var s = "";
-		var t = x;
-		do
-		{
-			s = (t & 7) + s;
-			t >>>= 3;
-		}
-		while (t > 0);
-		return s;
 	}
 	
 	inline static function roundTo(x:Float, y:Float):Float
