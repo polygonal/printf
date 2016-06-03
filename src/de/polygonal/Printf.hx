@@ -1008,9 +1008,9 @@ class Printf
 		}
 		
 		if (flags.has(Minus))
-			output = rpad(output, " ", args.width);
+			output = rpad(output, " ", width);
 		else
-			output = lpad(output, " ", args.width);
+			output = lpad(output, " ", width);
 		
 		return output;
 	}
@@ -1146,18 +1146,20 @@ class Printf
 		return x;
 	}
 	
-	static function lpad(s:String, c:String, l:Int):String
+	inline static function lpad(s:String, c:String, l:Int):String
 	{
-		if (c.length <= 0) throw 'c.length <= 0';
-		while (s.length < l) s = c + s;
-		return s;
+		var k = s.length;
+		var t = "";
+		for (i in 0...l - k) t += c;
+		return t + s;
 	}
 	
-	static function rpad(s:String, c:String, l:Int):String
+	inline static function rpad(s:String, c:String, l:Int):String
 	{
-		if (c.length <= 0) throw "c.length <= 0";
-		while (s.length < l) s = s + c;
-		return s;
+		var k = s.length;
+		var t = "";
+		for (i in 0...l - k) t += c;
+		return s + t;
 	}
 	
 	inline static function toHex(x:Int):String
