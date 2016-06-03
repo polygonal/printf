@@ -863,7 +863,7 @@ class Printf
 			if (flags.has(LengthH))
 				value &= 0xffff;
 			
-			output = toHex(value);
+			output = StringTools.hex(value);
 			
 			if (precision > 1 && output.length < precision)
 				output = lpad(output, "0", precision);
@@ -1160,25 +1160,6 @@ class Printf
 		var t = "";
 		for (i in 0...l - k) t += c;
 		return s + t;
-	}
-	
-	inline static function toHex(x:Int):String
-	{
-		#if flash9
-		var n:UInt = x;
-		var s:String = untyped x.toString(16);
-		s = s.toUpperCase();
-		#else
-		var s = "";
-		var hexChars = "0123456789ABCDEF";
-		do
-		{
-			s = hexChars.charAt(x&15) + s;
-			x >>>= 4;
-		}
-		while( x > 0 );
-		#end
-		return s;
 	}
 	
 	//TODO optimize
