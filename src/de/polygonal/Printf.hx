@@ -562,7 +562,16 @@ class Printf
 							throw new PrintfError("specifier 'n' is not supported");
 					};
 					
-					var value = args[argIndex++];
+					var value;
+					if (tagArgs.pos > -1)
+					{
+						if (tagArgs.pos > args.length - 1)
+							throw new PrintfError("argument index out of range");
+						value = args[tagArgs.pos];
+					}
+					else
+						value = args[argIndex++];
+					
 					if (value == null) value = "null";
 					output.add(f(value, tagArgs));
 			}
@@ -617,7 +626,7 @@ class Printf
 				//}
 				else
 				{
-					var params:FormatArgs = { flags:EnumFlags.ofInt(0), pos:-1, width:-1, precision:-1 };
+					var params:FormatArgs = { flags:EnumFlags.ofInt(0), pos: -1, width: -1, precision: -1 };
 					
 					//read flags: -+(space)#0
 					while (c >= " ".code && c <= "0".code)
@@ -669,7 +678,7 @@ class Printf
 						//check if number was a position, not a width
 						if (c == "$".code)
 						{
-							params.pos = params.width - 1;
+							params.pos = w - 1;
 							params.width = -1;
 							next();
 							
@@ -1006,14 +1015,14 @@ class Printf
 		return output;
 	}
 	
-	static function formatString(x:String, args:FormatArgs):String
+	static function formatString(value:String, args:FormatArgs):String
 	{
-		var output = x;
+		var output = value;
 		var precision = args.precision;
 		var width = args.width;
 		
 		if (precision > 0)
-			output = x.substr(0, precision);
+			output = value.substr(0, precision);
 		
 		var k = output.length;
 		if (width > 0 && k < width)
