@@ -19,6 +19,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 package de.polygonal;
 
 import haxe.EnumFlags;
+import haxe.ds.Vector;
 
 #if macro
 import haxe.macro.Expr;
@@ -61,7 +62,12 @@ class Printf
 	#end
 	
 	static var _initialized = false;
-	static var _tokenList:Array<FormatToken>;
+	static var _tokenList:Array<FormatToken>; //TODO
+	
+	inline static var PAD_0 = 0;
+	inline static var PAD_SPACE = 20;
+	
+	static var _padChars:Vector<String>;
 	
 	static function init()
 	{
@@ -70,6 +76,10 @@ class Printf
 		#end
 		
 		_tokenList = [];
+		
+		_padChars = new Vector(40);
+		for (i in 0...20) _padChars.set(i     , StringTools.rpad("", "0", i));
+		for (i in 0...20) _padChars.set(i + 20, StringTools.rpad("", " ", i));
 	}
 	
 	/**
@@ -179,10 +189,11 @@ class Printf
 			return macro de.polygonal.Printf.format($_fmt, $_args);
 		
 		var fmtTokens:Array<FormatToken> = null;
+		var n = -1;
 		
 		try
 		{
-			fmtTokens = tokenize(fmt);
+			n = tokenize(fmt, fmtTokens);
 		}
 		catch (e:Dynamic)
 		{
@@ -205,8 +216,9 @@ class Printf
 			init();
 		}
 		
-		for (token in fmtTokens)
+		for (i in 0...n)
 		{
+			var token = fmtTokens[i];
 			switch(token)
 			{
 				case Unknown(_, pos):
@@ -409,18 +421,21 @@ class Printf
 						case FmtFloat(floatType):
 							if (preComputable && !Std.is(value, Float) && !Std.is(value, Int))
 								Context.error("the value must be a number", valueExpr.pos);
-							formatFunction = formatFloatFuncHash.get(std.Type.enumIndex(floatType));
-							formatFunctionName = formatFloatFuncNameHash.get(std.Type.enumIndex(floatType));
+							
+							throw 'todo';
+							//formatFunction = formatFloatFuncHash.get(std.Type.enumIndex(floatType));
+							//formatFunctionName = formatFloatFuncNameHash.get(std.Type.enumIndex(floatType));
 						
 						case FmtInt(integerType):
 							if (preComputable && !Std.is(value, Int))
 								Context.error("the value must be an integer", valueExpr.pos);
-							formatFunction = formatIntFuncHash.get(std.Type.enumIndex(integerType));
-							formatFunctionName = formatIntFuncNameHash.get(std.Type.enumIndex(integerType));
+							//formatFunction = formatIntFuncHash.get(std.Type.enumIndex(integerType));
+							//formatFunctionName = formatIntFuncNameHash.get(std.Type.enumIndex(integerType));
 						
 						case FmtString:
-							formatFunction = formatStringFuncHash.get(std.Type.enumIndex(FmtString));
-							formatFunctionName = formatStringFuncNameHash.get(std.Type.enumIndex(FmtString));
+							
+							formatFunction = formatString;
+							formatFunctionName = "formatString";
 							
 							value = Std.string(value);
 							valueExpr = macro Std.string($valueExpr);
@@ -498,7 +513,7 @@ class Printf
 		
 		var output = new StringBuf();
 		var argIndex = 0;
-		var tokens = _tokenList;
+		var tokens = []; //TODO buffer, watch for recursive calls
 		for (i in 0...tokenize(fmt, tokens))
 		{
 			switch (tokens[i])
@@ -507,13 +522,13 @@ class Printf
 					throw new PrintfError("invalid format specifier");
 				
 				case Raw(string):
-					trace('raw string=[$string]');
 					output.add(string);
 				
 				case Property(name):
 					if (!Reflect.hasField(args[0], name))
-						throw new PrintfError("no field named " + name);
+						throw new PrintfError('no field named "$name" found');
 					output.add(Std.string(Reflect.field(args[0], name)));
+					argIndex++;
 				
 				case Tag(type, tagArgs):
 					if (tagArgs.width == null)
@@ -536,7 +551,7 @@ class Printf
 						case FmtFloat(floatType):
 							switch (floatType)
 							{
-								case FNormal: formatNormalFloat;
+								case FNormal: formatFloat;
 								case FScientific: formatScientific;
 								case FNatural: formatNaturalFloat;
 							}
@@ -610,12 +625,11 @@ class Printf
 				
 				var token:FormatToken;
 				
-				//{named parameter
-				if (c == "(".code)
+				if (c == "(".code) //named parameter?
 				{
 					var endPos = fmt.indexOf(")", i);
 					if (endPos == -1)
-						token = Unknown("named param", i);
+						token = Unknown("named parameter", i);
 					else
 					{
 						var paramName = fmt.substr(i, endPos - i);
@@ -623,10 +637,9 @@ class Printf
 						token = Property(paramName);
 					}
 				}
-				//}
 				else
 				{
-					var params:FormatArgs = { flags:EnumFlags.ofInt(0), pos: -1, width: -1, precision: -1 };
+					var params:FormatArgs = { flags: EnumFlags.ofInt(0), pos: -1, width: -1, precision: -1 };
 					
 					//read flags: -+(space)#0
 					while (c >= " ".code && c <= "0".code)
@@ -784,126 +797,190 @@ class Printf
 	
 	static function formatBinary(value:Int, args:FormatArgs):String
 	{
-		var output = "";
-		var flags = args.flags;
-		var precision = args.precision;
-		var width = args.width;
-		
-		if (precision == -1) precision = 1;
+		var s = "";
+		var f = args.flags;
+		var p = args.precision;
+		if (p == -1) p = 1;
+		var w = args.width;
 		
 		if (value != 0)
 		{
-			if (flags.has(LengthH))
-				value &= 0xffff;
+			if (f.has(LengthH)) value &= 0xffff;
 			
-			//toBin()
-			var i = value;
+			#if flash
+			var n:UInt = value;
+			s = untyped n.toString(2);
+			#else
 			do
 			{
-				output = ((i & 1) > 0 ? "1" : "0") + output;
-				i >>>= 1;
+				s = ((value & 1) > 0 ? "1" : "0") + s;
+				value >>>= 1;
 			}
-			while (i > 0);
+			while (value > 0);
+			#end
 			
-			if (precision > 1)
-			{
-				if (precision > output.length)
-					output = lpad(output, "0", precision);
-				
-				if (flags.has(Sharp)) output = "b" + output;
-			}
+			if (f.has(Sharp)) s = "b" + s;
+			if (p > 1 && s.length < p) s = pad(s, p, PAD_0, -1);
 		}
 		
-		return
-		if (flags.has(Minus))
-			(width > output.length) ? rpad(output, " ", width) : output;
-		else
-			(width > output.length) ? lpad(output, (flags.has(Zero) ? "0" :" ") , width) : output;
+		if (w > s.length)
+		{
+			s =
+			if (f.has(Minus))
+				pad(s, w, PAD_SPACE, 1);
+			else
+				f.has(Zero) ? pad(s, w, PAD_0, -1) : pad(s, w, PAD_SPACE, -1);
+		}
+		
+		return s;
 	}
 	
 	static function formatOctal(value:Int, args:FormatArgs):String
 	{
-		var output = "";
-		var flags = args.flags;
-		var precision = args.precision;
-		var width = args.width;
-		
-		if (precision == -1) precision = 1;
+		var s = "";
+		var f = args.flags;
+		var p = args.precision;
+		if (p == -1) p = 1;
+		var w = args.width;
 		
 		if (value != 0)
 		{
-			if (flags.has(LengthH)) value &= 0xffff;
+			if (f.has(LengthH)) value &= 0xffff;
 			
-			var t = value;
+			#if flash
+			var n:UInt = value;
+			s = untyped n.toString(8);
+			#else
 			do
 			{
-				output = (t & 7) + output;
-				t >>>= 3;
+				s = (value & 7) + s;
+				value >>>= 3;
 			}
-			while (t > 0);
+			while (value > 0);
+			#end
 			
-			if (flags.has(Sharp)) output = "0" + output;
-			
-			if (precision > 1 && output.length < precision)
-				output = lpad(output, "0", precision);
+			if (f.has(Sharp)) s = "0" + s;
+			if (p > 1 && s.length < p) s = pad(s, p, PAD_0, -1);
 		}
 		
-		return
-		if (flags.has(Minus))
-			(width > output.length) ? rpad(output, " ", width) : output;
-		else
-			(width > output.length) ? lpad(output, (flags.has(Zero) ? "0" :" ") , width) : output;
+		if (w > s.length)
+		{
+			s =
+			if (f.has(Minus))
+				pad(s, w, PAD_SPACE, 1);
+			else
+				pad(s, w, f.has(Zero) ? PAD_0 : PAD_SPACE, -1);
+		}
+		
+		return s;
 	}
 	
 	static function formatHexadecimal(value:Int, args:FormatArgs):String
 	{
-		var output = "";
-		var flags = args.flags;
-		var precision = args.precision;
-		var width = args.width;
-		
-		if (precision == -1) precision = 1;
+		var s = "";
+		var f = args.flags;
+		var p = args.precision;
+		if (p == -1) p = 1;
+		var w = args.width;
 		
 		if (value != 0)
 		{
-			if (flags.has(LengthH))
-				value &= 0xffff;
+			if (f.has(LengthH)) value &= 0xffff;
 			
-			output = StringTools.hex(value);
+			#if flash
+			var n:UInt = value;
+			s = untyped n.toString(16);
+			#else
+			var hexChars = "0123456789ABCDEF";
+			do
+			{
+				s = hexChars.charAt(value & 15) + s;
+				value >>>= 4;
+			}
+			while (value > 0);
+			#end
 			
-			if (precision > 1 && output.length < precision)
-				output = lpad(output, "0", precision);
+			if (f.has(Sharp))
+			{
+				if (f.has(UpperCase))
+					s = "0X" + s;
+				else
+					s = "0x" + s;
+			}
+			if (p > 1 && s.length < p) s = pad(s, p, PAD_0, -1);
 			
-			if (flags.has(Sharp) && value != 0)
-				output = "0x" + output;
-			
-			output = (flags.has(UpperCase)) ? output.toUpperCase() : output.toLowerCase();
+			#if flash
+			s = f.has(UpperCase) ? s.toUpperCase() : s;
+			#else
+			s = f.has(UpperCase) ? s : s.toLowerCase();
+			#end
 		}
 		
-		return
-		if (flags.has(Minus))
-			(width > output.length) ? rpad(output, " ", width) : output;
-		else
-			(width > output.length) ? lpad(output, (flags.has(Zero)) ? "0" : " " , width) : output;
+		if (w > s.length)
+		{
+			s =
+			if (f.has(Minus))
+				pad(s, w, PAD_SPACE, 1);
+			else
+				f.has(Zero) ? pad(s, w, PAD_0, -1) : pad(s, w, PAD_SPACE, -1);
+		}
+		
+		return s;
+	}
+	
+	static function formatSignedDecimal(value:Int, args:FormatArgs):String
+	{
+		var f = args.flags;
+		var p = args.precision;
+		var w = args.width;
+		
+		if (p == 0 && value == 0) return "";
+		
+		if (f.has(LengthH)) value &= 0xffff;
+		
+		var s = Std.string(iabs(value));
+		if (p > 1) s = pad(s, p, PAD_0, -1);
+		if (f.has(Zero)) s = pad(s, value < 0 ? w - 1 : w, PAD_0, -1);
+		if (value < 0) s = "-" + s;
+		if (value >= 0)
+		{
+			if (f.has(Plus))
+				s = "+" + s;
+			else
+			if (f.has(Space))
+				s = " " + s;
+		}
+		
+		return pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
 	}
 	
 	static function formatUnsignedDecimal(value:Int, args:FormatArgs):String
 	{
-		var output:String;
-		var precision = args.precision;
+		if (value >= 0) return formatSignedDecimal(value, args);
 		
-		if (value >= 0)
-			output = formatSignedDecimal(value, args);
+		var s;
+		
+		var x = haxe.Int64.make(0, value);
+		s = haxe.Int64.toStr(x);
+		
+		var p = args.precision;
+		if (p > 1) s = pad(s, p, PAD_SPACE, -1);
+		
+		var f = args.flags;
+		var w = args.width;
+		
+		if (f.has(Zero))
+			s = pad(s, w, PAD_0, -1);
+			
+		if (f.has(Plus))
+			s = "+" + s;
 		else
-		{
-			var x = haxe.Int64.make(0, value);
-			output = haxe.Int64.toStr(x);
-			if (precision > 1 && output.length < precision)
-				output = lpad(output, "0", precision);
-			output = padNumber(output, value, args.flags, args.width);
-		}
+		if (f.has(Space))
+			s = " " + s;
 		
-		return output;
+		s = pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
+		
+		return s;
 	}
 	
 	static function formatNaturalFloat(value:Float, args:FormatArgs):String
@@ -911,9 +988,8 @@ class Printf
 		//TODO: precompute lengths
 		args.precision = 0;
 		
-		var formatedFloat = formatNormalFloat(value, args);
+		var formatedFloat = formatFloat(value, args);
 		var formatedScientific = formatScientific(value, args);
-		
 		if (args.flags.has(Sharp))
 		{
 			if (formatedFloat.indexOf(".") != -1)
@@ -923,28 +999,28 @@ class Printf
 				formatedFloat = formatedFloat.substr(0, pos);
 			}
 		}
-		
 		return (formatedFloat.length <= formatedScientific.length) ? formatedFloat : formatedScientific;
 	}
 	
 	static function formatScientific(value:Float, args:FormatArgs):String
 	{
-		var output = "";
-		var flags = args.flags;
-		var precision = args.precision;
-		if (precision == -1) precision = DEFAULT_PRECISION;
+		var f = args.flags;
+		var p = args.precision;
+		if (p == -1) p = DEFAULT_PRECISION;
 		
 		var sign:Int, exponent:Int;
+		
+		var s = "";
 		
 		if (value == 0)
 		{
 			sign = 0;
 			exponent = 0;
-			output += "0";
-			if (precision > 0)
+			s += "0";
+			if (p > 0)
 			{
-				output += ".";
-				for (i in 0...precision) output += "0";
+				s += ".";
+				for (i in 0...p) s += "0";
 			}
 		}
 		else
@@ -953,238 +1029,128 @@ class Printf
 			value = Math.abs(value);
 			exponent = Math.floor(Math.log(value) / 2.302585092994046); //LN10
 			value = value / Math.pow(10, exponent);
-			var p = Math.pow(0.1, precision);
+			var p = Math.pow(0.1, p);
 			value = roundTo(value, p);
 		}
 		
-		output += (sign < 0 ? "-" : flags.has(Plus) ? "+" : "");
+		s += (sign < 0 ? "-" : f.has(Plus) ? "+" : "");
 		
 		if (value != 0)
-		{
-			output += rpad(Std.string(value).substr(0, precision + 2), "0", precision + 2);
-			
-			
-			
-		}
-		output += flags.has(UpperCase) ? "E" : "e";
-		output += exponent >= 0 ? "+" : "-";
+			s += pad(Std.string(value).substr(0, p + 2), p + 2, PAD_SPACE, 1);
+		s += f.has(UpperCase) ? "E" : "e";
+		s += exponent >= 0 ? "+" : "-";
 		
 		if (exponent < 10)
-			output += "00";
+			s += "00";
 		else
 		if (exponent < 100)
-			output += "0";
+			s += "0";
 		
-		output += Std.string(exponent < 0 ? -exponent : exponent);
-		return output;
+		return s + iabs(exponent);
 	}
 	
-	static function formatSignedDecimal(value:Int, args:FormatArgs):String
+	static function formatFloat(value:Float, args:FormatArgs):String
 	{
-		var output:String;
+		var f = args.flags;
+		var p = args.precision;
+		if (p == -1) p = DEFAULT_PRECISION;
+		var w = args.width;
 		
-		var flags = args.flags;
-		var precision = args.precision;
-		var width = args.width;
+		var s;
 		
-		if (precision == 0 && value == 0)
-			output = "";
+		if (p == 0)
+		{
+			s = Std.string(iabs(Math.round(value)));
+			if (f.has(Sharp)) s += ".";
+		}
 		else
 		{
-			if (flags.has(LengthH)) value &= 0xffff;
-			
-			output = Std.string(value < 0 ? -value : value);
-			
-			if (precision > 1 && output.length < precision)
-				output = lpad(output, "0", precision);
-			
-			if (flags.has(Zero))
-				output = lpad(output, "0", value < 0 ? width - 1 : width);
-			
-			if (value < 0) output = "-" + output;
+			#if flash
+			s = untyped value.toFixed(p);
+			#elseif js
+			s = untyped value.toFixed(p);
+			#else
+			value = roundTo(value, Math.pow(.1, p));
+			if (Math.isNaN(value))
+				s = "NaN";
+			else
+			{
+				var t = Std.int(Math.pow(10, p));
+				s = Std.string(Std.int(value * t) / t);
+				var i = s.indexOf(".");
+				if (i != -1)
+				{
+					for (i in s.substr(i + 1).length...p)
+						s += "0";
+				}
+				else
+				{
+					s += ".";
+					for (i in 0...p)
+						s += "0";
+				}
+			}
+			#end
 		}
 		
 		if (value >= 0)
 		{
-			if (flags.has(Plus))
-				output = "+" + output;
+			if (f.has(Plus))
+				s = "+" + s;
 			else
-			if (flags.has(Space))
-				output = " " + output;
+			if (f.has(Space))
+				s = " " + s;
 		}
 		
-		if (flags.has(Minus))
-			output = rpad(output, " ", width);
-		else
-			output = lpad(output, " ", width);
-		
-		return output;
-	}
-	
-	static function formatString(value:String, args:FormatArgs):String
-	{
-		var output = value;
-		var precision = args.precision;
-		var width = args.width;
-		
-		if (precision > 0)
-			output = value.substr(0, precision);
-		
-		var k = output.length;
-		if (width > 0 && k < width)
-		{
-			if (args.flags.has(Minus))
-				output = rpad(output, " ", width);
-			else
-				output = lpad(output, " ", width);
-		}
-		
-		return output;
-	}
-	
-	static function formatNormalFloat(value:Float, args:FormatArgs):String
-	{
-		var output:String;
-		
-		var flags = args.flags;
-		var precision = args.precision;
-		var width = args.width;
-		
-		//set default precision if not specified
-		if (precision == -1) precision = DEFAULT_PRECISION;
-		
-		if (precision == 0)
-		{
-			var tmp = Std.int(Math.round(value));
-			output = Std.string(tmp < 0 ? -tmp : tmp);
-			
-			//force decimal point?
-			if (flags.has(Sharp)) output += ".";
-		}
-		else
-		{
-			//toFixed()
-			value = roundTo(value, Math.pow(.1, precision));
-			var decimalPlaces = precision;
-			if (Math.isNaN(value))
-				output = "NaN";
-			else
-			{
-				var t = Std.int(Math.pow(10, decimalPlaces));
-				
-				output = Std.string(Std.int(value * t) / t);
-				
-				
-				
-				
-				var i = output.indexOf(".");
-				if (i != -1)
-				{
-					for (i in output.substr(i + 1).length...decimalPlaces)
-						output += "0";
-				}
-				else
-				{
-					output += ".";
-					for (i in 0...decimalPlaces)
-						output += "0";
-				}
-			}
-		}
-		
-		if (flags.has(Plus) && value >= 0)
-			output = "+" + output;
-		else
-		if (flags.has(Space) && value >= 0)
-			output = " " + output;
-		
-		if (flags.has(Zero))
-			output = lpad(output, "0", (value < 0) ? width - 1 : width);
-		
-		if (flags.has(Minus))
-			output = rpad(output, " ", width);
-		else
-			output = lpad(output, " ", width);
-		
-		return output;
+		if (f.has(Zero)) s = pad(s, (value < 0) ? w - 1 : w, PAD_0, -1);
+		return pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
 	}
 	
 	static function formatCharacter(x:Int, args:FormatArgs):String
 	{
-		var output = String.fromCharCode(x);
+		var s = String.fromCharCode(x);
 		if (args.width > 1)
-		{
-			//left-justify (right justification is the default)
-			if (args.flags.has(Minus))
-				output = rpad(output, " ", args.width);
-			else
-				output = lpad(output, " ", args.width);
-		}
-		
-		return output;
-	}
-
-	static function padNumber(x:String, n:Float, flags:EnumFlags<FormatFlag>, width:Int):String
-	{
-		var k = x.length;
-		if (width > 0 && k < width)
-		{
-			//left-justify (right justification is the default)
-			if (flags.has(Minus))
-				x = rpad(x, " ", width);
-			else
-			{
-				if (n >= 0)
-					x = lpad(x, flags.has(Zero) ? "0" : " ", width);
-				else
-				{
-					if (flags.has(Zero))
-					{
-						//shift minus sign to left-most position
-						x = "-" + lpad(x.substr(1), "0", width);
-					}
-					else
-						x = lpad(x, " ", width);
-				}
-			}
-		}
-		
-		return x;
+			s = pad(s, args.width, PAD_SPACE, args.flags.has(Minus) ? 1 : -1);
+		return s;
 	}
 	
-	inline static function lpad(s:String, c:String, l:Int):String
+	static function formatString(value:String, args:FormatArgs):String
 	{
-		var k = s.length;
-		var t = "";
-		for (i in 0...l - k) t += c;
-		return t + s;
+		var s = value;
+		if (args.precision > 0) s = value.substr(0, args.precision);
+		if (args.width > 0) s = pad(s, args.width, PAD_SPACE, args.flags.has(Minus) ? 1 : -1);
+		return s;
 	}
 	
-	inline static function rpad(s:String, c:String, l:Int):String
+	static inline function pad(s:String, l:Int, type:Int, dir:Int):String
 	{
-		var k = s.length;
-		var t = "";
-		for (i in 0...l - k) t += c;
-		return s + t;
-	}
-	
-	inline static function roundTo(x:Float, y:Float):Float
-	{
-		//rounds x to interval y
-		#if (js || flash)
-		return Math.round(x / y) * y;
-		#else
-		//warning: this decimal constant is unsigned only in ISO C90
-		var min = -0x7fffffff;
-		var t = x / y;
-		if (t < 0x7fffffff && t > min)
-			return Math.round(t) * y;
+		var c = l - s.length;
+		return
+		if (c < 1) s;
 		else
 		{
-			t = (t > 0 ? t + .5 : (t < 0 ? t - .5 : t));
-			return (t - t % 1) * y;
+			var t;
+			if (c > 30)
+			{
+				var char = type == PAD_0 ? "0" : " ";
+				t = char;
+				for (i in 0...c - 1) t += char;
+			}
+			else
+				t = _padChars[type + c];
+				
+			return dir > 0 ? s + t : t + s;
 		}
-		#end
+	}
+	
+	@:extern static inline function roundTo(x:Float, y:Float):Float
+	{
+		return Math.round(x / y) * y;
+	}
+	
+	@:extern static inline function iabs(x:Int):Int
+	{
+		return x < 0 ? -x : x;
 	}
 }
 
