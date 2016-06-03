@@ -1,36 +1,27 @@
 ﻿/*
- *                            _/                                                    _/   
- *       _/_/_/      _/_/    _/  _/    _/    _/_/_/    _/_/    _/_/_/      _/_/_/  _/    
- *      _/    _/  _/    _/  _/  _/    _/  _/    _/  _/    _/  _/    _/  _/    _/  _/     
- *     _/    _/  _/    _/  _/  _/    _/  _/    _/  _/    _/  _/    _/  _/    _/  _/      
- *    _/_/_/      _/_/    _/    _/_/_/    _/_/_/    _/_/    _/    _/    _/_/_/  _/       
- *   _/                            _/        _/                                          
- *  _/                        _/_/      _/_/                                             
- *                                                                                       
- * POLYGONAL - A HAXE LIBRARY FOR GAME DEVELOPERS
- * Copyright (c) 2013 Michael Baczynski @polygonal, Zachary Dremann @Dr_Eman
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+Copyright (c) 2016 Michael Baczynski, http://www.polygonal.de
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 package de.polygonal;
 
 import haxe.EnumFlags;
 import haxe.ds.IntMap;
+
+import haxe.ds.Vector;
 
 #if macro
 import haxe.macro.Expr;
@@ -38,52 +29,21 @@ import haxe.macro.Context;
 import haxe.macro.Type;
 #end
 
+using Std;
+
 /**
  * <p>C printf implementation.</p>
  * <p>See <a href="https://github.com/polygonal/printf" target="_blank">https://github.com/polygonal/printf</a>.</p>
  */
 class Printf
 {
-	static var dataTypeMap:IntMap<FormatDataType>;
-
-	static var formatIntFuncHash:IntMap<Int->FormatArgs->String>;
-	static var formatFloatFuncHash:IntMap<Float->FormatArgs->String>;
-	static var formatStringFuncHash:IntMap<String->FormatArgs->String>;
+	inline static var DEFAULT_PRECISION = 6;
 	
 	#if macro
 	static var formatIntFuncNameHash:IntMap<String>;
 	static var formatFloatFuncNameHash:IntMap<String>;
 	static var formatStringFuncNameHash:IntMap<String>;
-	#end
 	
-	static var _initialized = false;
-	
-	static function init()
-	{
-		dataTypeMap = makeDataTypeMap();
-		
-		formatIntFuncHash = new IntMap();
-		formatIntFuncHash.set(std.Type.enumIndex(ISignedDecimal), formatSignedDecimal);
-		formatIntFuncHash.set(std.Type.enumIndex(IUnsignedDecimal), formatUnsignedDecimal);
-		formatIntFuncHash.set(std.Type.enumIndex(ICharacter), formatCharacter);
-		formatIntFuncHash.set(std.Type.enumIndex(IHex), formatHexadecimal);
-		formatIntFuncHash.set(std.Type.enumIndex(IOctal), formatOctal);
-		formatIntFuncHash.set(std.Type.enumIndex(IBin), formatBinary);
-		
-		formatFloatFuncHash = new IntMap();
-		formatFloatFuncHash.set(std.Type.enumIndex(FNormal), formatNormalFloat);
-		formatFloatFuncHash.set(std.Type.enumIndex(FScientific), formatScientific);
-		formatFloatFuncHash.set(std.Type.enumIndex(FNatural), formatNaturalFloat);
-		
-		formatStringFuncHash = new IntMap();
-		formatStringFuncHash.set(std.Type.enumIndex(FmtString), formatString);
-		
-		#if macro
-		makeNameHashes();
-		#end
-	}
-	
-	#if macro
 	static function makeNameHashes()
 	{
 		formatIntFuncNameHash = new IntMap();
@@ -104,30 +64,16 @@ class Printf
 	}
 	#end
 	
-	static function makeDataTypeMap()
+	static var _initialized = false;
+	static var _tokenList:Array<FormatToken>;
+	
+	static function init()
 	{
-		var hash = new IntMap<FormatDataType>();
-		hash.set("i".code, FmtInteger(ISignedDecimal));
-		hash.set("d".code, FmtInteger(ISignedDecimal));
-		hash.set("u".code, FmtInteger(IUnsignedDecimal));
-		hash.set("c".code, FmtInteger(ICharacter));
-		hash.set("x".code, FmtInteger(IHex));
-		hash.set("X".code, FmtInteger(IHex));
-		hash.set("o".code, FmtInteger(IOctal));
-		hash.set("b".code, FmtInteger(IBin));
+		#if macro
+		makeNameHashes();
+		#end
 		
-		hash.set("f".code, FmtFloat(FNormal));
-		hash.set("e".code, FmtFloat(FScientific));
-		hash.set("E".code, FmtFloat(FScientific));
-		hash.set("g".code, FmtFloat(FNatural));
-		hash.set("G".code, FmtFloat(FNatural));
-		
-		hash.set("s".code, FmtString);
-		
-		hash.set("p".code, FmtPointer);
-		hash.set("n".code, FmtNothing);
-		
-		return hash;
+		_tokenList = [];
 	}
 	
 	/**
@@ -149,7 +95,7 @@ class Printf
 			case TInst(t, _):
 				error = t.get().name != "String";
 			
-			default:
+			case _:
 				error = true;
 		}
 		
@@ -169,7 +115,7 @@ class Printf
 						if (t.get().name == "Array")
 							makeArray = false;
 					
-					default:
+					case _:
 						makeArray = true;
 				};
 			
@@ -194,7 +140,7 @@ class Printf
 			case TInst(t, _):
 				error = t.get().name != "Array";
 			
-			default:
+			case _:
 				error = true;
 		}
 		
@@ -211,10 +157,10 @@ class Printf
 				{
 					case CString(valStr):
 						fmt = valStr;
-					default:
+					case _:
 				}
 			
-			default:
+			case _:
 		}
 		
 		switch(_args.expr)
@@ -222,7 +168,7 @@ class Printf
 			case EArrayDecl(values):
 				fmtArgs = values;
 			
-			default:
+			case _:
 		}
 		
 		
@@ -274,8 +220,8 @@ class Printf
 					var file = Context.getPosInfos(Context.currentPos()).file;
 					Context.error("invalid format specifier", Context.makePosition( { min:min, max:max, file:file } ));
 				
-				case BareString(str):
-					outputArr.push(Context.makeExpr(str, Context.currentPos()));
+				case Raw(string):
+					outputArr.push(Context.makeExpr(string, Context.currentPos()));
 				
 				case Property(name):
 					var objExpr = (knownArgs)?
@@ -297,7 +243,7 @@ class Printf
 								}
 							}
 						
-						default:
+						case _:
 					}
 					if (valueExpr == null)
 						valueExpr = { expr:EField(objExpr, name), pos:objExpr.pos };
@@ -331,21 +277,21 @@ class Printf
 											case TInst(type, _):
 												error = type.get().name != "Int";
 											
-											default:
+											case _:
 												error = true;
 										}
 									
-									default:
+									case _:
 										error = true;
 								}
 							
-							default:
+							case _:
 								switch(Context.typeof(widthExpr))
 								{
 									case TInst(type, _):
 										error = type.get().name != "Int";
 									
-									default:
+									case _:
 										error = true;
 								}
 						}
@@ -378,21 +324,21 @@ class Printf
 											case TInst(type, _):
 												error = type.get().name != "Int";
 											
-											default:
+											case _:
 												error = true;
 										}
 									
-									default:
+									case _:
 										error = true;
 								}
 							
-							default:
+							case _:
 								switch(Context.typeof(precisionExpr))
 								{
 									case TInst(type, _):
 										error = type.get().name != "Int";
 									
-									default:
+									case _:
 										error = true;
 								}
 						}
@@ -435,11 +381,11 @@ class Printf
 								case CString(cValue):
 									value = cValue;
 								
-								default:
+								case _:
 									value = null;
 							}
 						
-						default:
+						case _:
 							value = null;
 					}
 					
@@ -454,7 +400,7 @@ class Printf
 							case TInst(t, _):
 								return (t.get().name);
 							
-							default:
+							case _:
 								return null;
 						}
 					};
@@ -470,7 +416,7 @@ class Printf
 							formatFunction = formatFloatFuncHash.get(std.Type.enumIndex(floatType));
 							formatFunctionName = formatFloatFuncNameHash.get(std.Type.enumIndex(floatType));
 						
-						case FmtInteger(integerType):
+						case FmtInt(integerType):
 							if (preComputable && !Std.is(value, Int))
 								Context.error("the value must be an integer", valueExpr.pos);
 							formatFunction = formatIntFuncHash.get(std.Type.enumIndex(integerType));
@@ -542,8 +488,9 @@ class Printf
 	}
 	
 	/**
-	 * Writes formatted data to a string.
-	 * Runtime, essential features.
+		Writes formatted data to a string.
+		
+		Runtime, essential features.
 	 */
 	public static function format(fmt:String, args:Array<Dynamic>):String
 	{
@@ -554,246 +501,287 @@ class Printf
 		}
 		
 		for (i in 0...args.length)
-			if (args[i] == null)
-				args[i] = "null";
+			if (args[i] == null) args[i] = "null";
 		
 		var output = "";
 		var argIndex = 0;
-		var tokens = tokenize(fmt);
-		for (token in tokens)
+		
+		var tokens = _tokenList;
+		
+		
+		
+		for (i in 0...tokenize(fmt, tokens))
 		{
-			switch(token)
+			trace(tokens[i]);
+			
+			switch (tokens[i])
 			{
 				case Unknown(_, _):
-					throw "invalid format specifier";
+					throw new PrintfError("invalid format specifier");
 				
-				case BareString(str):
-					output += str;
+				case Raw(string):
+					trace('raw string=[$string]');
+					output += string;
 				
 				case Property(name):
 					if (!Reflect.hasField(args[0], name))
-						throw "no field named " + name;
+						throw new PrintfError("no field named " + name);
 					output += Std.string(Reflect.field(args[0], name));
 				
 				case Tag(type, tagArgs):
-					tagArgs.width = (tagArgs.width != null)?tagArgs.width:cast(args[argIndex++], Int);
-					tagArgs.precision = (tagArgs.precision != null)?tagArgs.precision:cast(args[argIndex++], Int);
-					var value:Dynamic = args[argIndex++];
-					
-					var formatFunction:Dynamic->FormatArgs->String;
-					
-					switch(type)
+					if (tagArgs.width == null)
 					{
-						case FmtFloat(floatType):
-							formatFunction = formatFloatFuncHash.get(std.Type.enumIndex(floatType));
-						
-						case FmtInteger(integerType):
-							formatFunction = formatIntFuncHash.get(std.Type.enumIndex(integerType));
-						
-						case FmtString:
-							formatFunction = formatStringFuncHash.get(std.Type.enumIndex(FmtString));
-						
-						case FmtPointer:
-							throw "specifier 'p' is not supported";
-						
-						case FmtNothing:
-							throw "specifier 'n' is not supported";
+						if (!Std.is(args[argIndex], Int))
+							throw new PrintfError("invalid 'width' argument");
+						tagArgs.width = args[argIndex++];
 					}
 					
-					output += formatFunction(value, tagArgs);
+					if (tagArgs.precision == null)
+					{
+						if (!Std.is(args[argIndex], Int))
+							throw new PrintfError("invalid 'precision' argument");
+						tagArgs.precision = args[argIndex++];
+					}
+					
+					var f:Dynamic->FormatArgs->String =
+					switch (type)
+					{
+						case FmtFloat(floatType):
+							switch (floatType)
+							{
+								case FNormal: formatNormalFloat;
+								case FScientific: formatScientific;
+								case FNatural: formatNaturalFloat;
+							}
+						
+						case FmtInt(intType):
+							switch (intType)
+							{
+								case ICharacter: formatCharacter;
+								case ISignedDecimal: formatSignedDecimal;
+								case IUnsignedDecimal: formatUnsignedDecimal;
+								case IOctal: formatOctal;
+								case IHex: formatHexadecimal;
+								case IBin: formatBinary;
+							}
+						
+						case FmtString:
+							formatString;
+						
+						case FmtPointer:
+							throw new PrintfError("specifier 'p' is not supported");
+						
+						case FmtNothing:
+							throw new PrintfError("specifier 'n' is not supported");
+					};
+					
+					output += f(args[argIndex++], tagArgs);
 			}
 		}
+		
 		return output;
 	}
 	
-	static function tokenize(fmt:String):Array<FormatToken>
+	static function tokenize(fmt:String, output:Array<FormatToken>):Int
 	{
-		var length = fmt.length;
-		var lastStr = new StringBuf();
-		var i = 0;
-		var c = 0;
-		var tokens = new Array<FormatToken>();
-		while (i < length)
+		var i = 0, c = 0, n = 0;
+		
+		inline function isDigit(x) return x >= 48 && x <= 57;
+		inline function next() c = StringTools.fastCodeAt(fmt, i++);
+		
+		var buf = new StringBuf();
+		var k = fmt.length;
+		while (i < k)
 		{
-			var c = codeAt(fmt, i++);
+			next();
 			if (c == "%".code)
 			{
-				c = codeAt(fmt, i++);
+				next();
 				if (c == "%".code)
-					lastStr.addChar(c);
-				else
 				{
-					//{flush last string
-					if (lastStr.toString().length > 0)
-					{
-						tokens.push(BareString(lastStr.toString()));
-						lastStr = new StringBuf();
-					}
-					//}
-					
-					var token:FormatToken;
-					
-					//{named parameter
-					if (c == "(".code)
-					{
-						var endPos = fmt.indexOf(")", i);
-						if (endPos == -1)
-							token = Unknown("named param", i);
-						else
-						{
-							var paramName = fmt.substr(i, endPos - i);
-							i = endPos + 1;
-							token = Property(paramName);
-						}
-					}
-					//}
+					buf.addChar(c);
+					continue;
+				}
+				
+				//flush last string
+				if (buf.length > 0)
+				{
+					output[n++] = Raw(buf.toString());
+					buf = new StringBuf();
+				}
+				
+				var token:FormatToken;
+				
+				//{named parameter
+				if (c == "(".code)
+				{
+					var endPos = fmt.indexOf(")", i);
+					if (endPos == -1)
+						token = Unknown("named param", i);
 					else
 					{
-						var params:FormatArgs = { flags:EnumFlags.ofInt(0), pos:-1, width:-1, precision:-1 };
-						
-						//{read flags: -+(space)#0
-						while (c == "-".code || c == "+".code || c == "#".code || c == "0".code || c == " ".code)
+						var paramName = fmt.substr(i, endPos - i);
+						i = endPos + 1;
+						token = Property(paramName);
+					}
+				}
+				//}
+				else
+				{
+					var params:FormatArgs = { flags:EnumFlags.ofInt(0), pos:-1, width:-1, precision:-1 };
+					
+					//read flags: -+(space)#0
+					while (c >= " ".code && c <= "0".code)
+					{
+						switch (c)
 						{
-							if (c == "-".code)
-								params.flags.set(Minus);
-							else
-							if (c == "+".code)
-								params.flags.set(Plus);
-							else
-							if (c == "#".code)
-								params.flags.set(Sharp);
-							else
-							if (c == "0".code)
-								params.flags.set(Zero);
-							else
-							if (c == " ".code)
-								params.flags.set(Space);
+							case "-".code: next(); params.flags.set(Minus);
+							case "+".code: next(); params.flags.set(Plus);
+							case "#".code: next(); params.flags.set(Sharp);
+							case "0".code: next(); params.flags.set(Zero);
+							case " ".code: next(); params.flags.set(Space);
+							case _: break;
+						}
+					}
+					
+					//check for conflicting flags
+					if (params.flags.has(Minus) && params.flags.has(Zero))
+					{
+						#if macro
+						Context.warning("warning: `0' flag ignored with '-' flag in printf format", Context.currentPos());
+						#end
+						params.flags.unset(Zero);
+					}
+					if (params.flags.has(Space) && params.flags.has(Plus))
+					{
+						#if macro
+						Context.warning("warning: ` ' flag ignored with '+' flag in printf format", Context.currentPos());
+						#end
+						params.flags.unset(Space);
+					}
+					
+					//read width: (number) or "*"
+					if (c == "*".code)
+					{
+						params.width = null;
+						next();
+					}
+					else
+					if (isDigit(c))
+					{
+						var w = 0;
+						while (isDigit(c))
+						{
+							w = c - "0".code + w * 10;
+							next();
+						}
+						params.width = w;
+						
+						//check if number was a position, not a width
+						if (c == "$".code)
+						{
+							params.pos = params.width - 1;
+							params.width = -1;
+							next();
 							
-							c = codeAt(fmt, i++);
-						}
-						//}
-						
-						//{check for conflicting flags
-						if (params.flags.has(Minus) && params.flags.has(Zero))
-						{
-							#if macro
-							Context.warning("warning: `0' flag ignored with '-' flag in printf format", Context.currentPos());
-							#end
-							params.flags.unset(Zero);
-						}
-						if (params.flags.has(Space) && params.flags.has(Plus))
-						{
-							#if macro
-							Context.warning("warning: ` ' flag ignored with '+' flag in printf format", Context.currentPos());
-							#end
-							params.flags.unset(Space);
-						}
-						//}
-						
-						//{read width: (number) or "*"
-						if (c == "*".code)
-						{
-							params.width = null;
-							c = codeAt(fmt, i++);
-						}
-						else
-						if (isDigit(c))
-						{
-							params.width = 0;
-							while (isDigit(c))
-							{
-								params.width = c - "0".code + params.width * 10;
-								c = codeAt(fmt, i++);
-							}
-							
-							//check if number was a position, not a width
-							if (c == "$".code)
-							{
-								params.pos = params.width - 1;
-								params.width = -1;
-								c = codeAt(fmt, i++);
-								//re-check for width
-								if (c == "*".code)
-								{
-									params.width = null;
-									c = codeAt(fmt, i++);
-								}
-								else if (isDigit(c))
-								{
-									params.width = 0;
-									while (isDigit(c))
-									{
-										params.width = c - "0".code + params.width * 10;
-										c = codeAt(fmt, i++);
-									}
-								}
-							}
-						}
-						//}
-						
-						//{read .precision: .(number) or ".*"
-						if (c == ".".code)
-						{
-							c = codeAt(fmt, i++);
+							//re-check for width
 							if (c == "*".code)
 							{
-								params.precision = null;
-								c = codeAt(fmt, i++);
+								params.width = null;
+								next();
 							}
 							else
 							if (isDigit(c))
 							{
-								params.precision = 0;
+								var w = 0;
 								while (isDigit(c))
 								{
-									params.precision = c - "0".code + params.precision * 10;
-									c = codeAt(fmt, i++);
+									w = c - "0".code + w * 10;
+									next();
 								}
+								params.width = w;
 							}
-							else
-								params.precision = 0;
 						}
-						//}
-						
-						//{read length: hlL
-						while (c == "h".code || c == "l".code || c == "L".code)
-						{
-							switch (c)
-							{
-								case "h".code:
-									params.flags.set(LengthH);
-								case "l".code:
-									params.flags.set(Lengthl);
-								case "L".code:
-									params.flags.set(LengthL);
-							}
-							c = codeAt(fmt, i++);
-						}
-						//}
-						
-						//{read specifier: cdieEfgGosuxX
-						if (c == "E".code || c == "G".code || c == "X".code)
-							params.flags.set(UpperCase);
-						
-						var type = dataTypeMap.get(c);
-						
-						if (type == null)
-							token = Unknown(String.fromCharCode(c), i);
-						else
-							token = Tag(type, params);
-						//}
 					}
 					
-					tokens.push(token);
+					//read .precision: .(number) or ".*"
+					if (c == ".".code)
+					{
+						next();
+						if (c == "*".code)
+						{
+							params.precision = null;
+							next();
+						}
+						else
+						{
+							var p = 0;
+							if (isDigit(c))
+							{
+								while (isDigit(c))
+								{
+									p = c - "0".code + p * 10;
+									next();
+								}
+							}
+							params.precision = p;
+						}
+					}
+					
+					//read length: hlL
+					while (c >= "L".code && c <= "l".code)
+					{
+						switch (c)
+						{
+							case "h".code: next(); params.flags.set(LengthH);
+							case "l".code: next(); params.flags.set(LengthLowerCaseL);
+							case "L".code: next(); params.flags.set(LengthUpperCaseL);
+							case _: break;
+						}
+					}
+					
+					//read specifier: cdieEfgGosuxX
+					if (c >= "E".code && c <= "x".code)
+					{
+						var type =
+						switch (c)
+						{
+							case "i".code: FmtInt(ISignedDecimal);
+							case "d".code: FmtInt(ISignedDecimal);
+							case "u".code: FmtInt(IUnsignedDecimal);
+							case "c".code: FmtInt(ICharacter);
+							case "x".code: FmtInt(IHex);
+							case "X".code: params.flags.set(UpperCase); FmtInt(IHex);
+							case "o".code: FmtInt(IOctal);
+							case "b".code: FmtInt(IBin);
+							case "f".code: FmtFloat(FNormal);
+							case "e".code: FmtFloat(FScientific);
+							case "E".code: params.flags.set(UpperCase); FmtFloat(FScientific);
+							case "g".code: FmtFloat(FNatural);
+							case "G".code: params.flags.set(UpperCase); FmtFloat(FNatural);
+							case "s".code: FmtString;
+							case "p".code: FmtPointer;
+							case "n".code: FmtNothing;
+							case _: null;
+						}
+						
+						token =
+						if (type == null)
+							Unknown(String.fromCharCode(c), i);
+						else
+							Tag(type, params);
+					}
+					else
+						token = Unknown(String.fromCharCode(c), i);
 				}
+				output[n++] = token;
 			}
 			else
-				lastStr.addChar(c);
+				buf.addChar(c);
 		}
 		
-		if (lastStr.toString().length > 0)
-			tokens.push(BareString(lastStr.toString()));
-		return tokens;
+		if (buf.length > 0) output[n++] = Raw(buf.toString());
+		return n;
 	}
 	
 	static function formatBinary(value:Int, args:FormatArgs):String
@@ -927,7 +915,7 @@ class Printf
 			if (formatedFloat.indexOf(".") != -1)
 			{
 				var pos = formatedFloat.length -1;
-				while (codeAt(formatedFloat, pos) == "0".code) pos--;
+				while (formatedFloat.charCodeAt(pos) == "0".code) pos--;
 				formatedFloat = formatedFloat.substr(0, pos);
 			}
 		}
@@ -940,7 +928,7 @@ class Printf
 		var output = "";
 		var flags = args.flags;
 		var precision = args.precision;
-		if (precision == -1) precision = 6;
+		if (precision == -1) precision = DEFAULT_PRECISION;
 		
 		var sign:Int, exponent:Int;
 		
@@ -968,7 +956,12 @@ class Printf
 		output += (sign < 0 ? "-" : flags.has(Plus) ? "+" : "");
 		
 		if (value != 0)
-			output += rpad(str(value).substr(0, precision + 2), "0", precision + 2);
+		{
+			output += rpad(Std.string(value).substr(0, precision + 2), "0", precision + 2);
+			
+			
+			
+		}
 		output += flags.has(UpperCase) ? "E" : "e";
 		output += exponent >= 0 ? "+" : "-";
 		
@@ -978,13 +971,14 @@ class Printf
 		if (exponent < 100)
 			output += "0";
 		
-		output += str(iabs(exponent));
+		output += Std.string(exponent < 0 ? -exponent : exponent);
 		return output;
 	}
 	
 	static function formatSignedDecimal(value:Int, args:FormatArgs):String
 	{
 		var output:String;
+		
 		var flags = args.flags;
 		var precision = args.precision;
 		var width = args.width;
@@ -993,10 +987,9 @@ class Printf
 			output = "";
 		else
 		{
-			if (flags.has(LengthH))
-				value &= 0xffff;
+			if (flags.has(LengthH)) value &= 0xffff;
 			
-			output = str(iabs(value));
+			output = Std.string(value < 0 ? -value : value);
 			
 			if (precision > 1 && output.length < precision)
 				output = lpad(output, "0", precision);
@@ -1004,8 +997,7 @@ class Printf
 			if (flags.has(Zero))
 				output = lpad(output, "0", value < 0 ? width - 1 : width);
 			
-			if (value < 0)
-				output = "-" + output;
+			if (value < 0) output = "-" + output;
 		}
 		
 		if (value >= 0)
@@ -1055,11 +1047,12 @@ class Printf
 		var width = args.width;
 		
 		//set default precision if not specified
-		if (precision == -1) precision = 6;
+		if (precision == -1) precision = DEFAULT_PRECISION;
 		
 		if (precision == 0)
 		{
-			output = str(iabs(Math.round(value)));
+			var tmp = Std.int(Math.round(value));
+			output = Std.string(tmp < 0 ? -tmp : tmp);
 			
 			//force decimal point?
 			if (flags.has(Sharp)) output += ".";
@@ -1074,7 +1067,12 @@ class Printf
 			else
 			{
 				var t = Std.int(Math.pow(10, decimalPlaces));
-				output = str(Std.int(value * t) / t);
+				
+				output = Std.string(Std.int(value * t) / t);
+				
+				
+				
+				
 				var i = output.indexOf(".");
 				if (i != -1)
 				{
@@ -1122,7 +1120,7 @@ class Printf
 		return output;
 	}
 
-	static function padNumber(x:String, n:Float, flags:EnumFlags<FormatFlags>, width:Int):String
+	static function padNumber(x:String, n:Float, flags:EnumFlags<FormatFlag>, width:Int):String
 	{
 		var k = x.length;
 		if (width > 0 && k < width)
@@ -1183,6 +1181,7 @@ class Printf
 		return s;
 	}
 	
+	//TODO optimize
 	static function toOct(x:Int):String
 	{
 		var s = "";
@@ -1195,14 +1194,6 @@ class Printf
 		while (t > 0);
 		return s;
 	}
-	
-	static function iabs(x:Int):Int return Std.int(Math.abs(x));
-	
-	static function str<T>(x:T):String return Std.string(x);
-	
-	inline static function codeAt(x:String, i:Int):Int return StringTools.fastCodeAt(x, i);
-	
-	inline static function isDigit(x:Int):Bool return x >= 48 && x <= 57;
 	
 	inline static function roundTo(x:Float, y:Float):Float
 	{
@@ -1224,45 +1215,63 @@ class Printf
 	}
 }
 
-private typedef FormatArgs =
+class PrintfError
 {
-	flags:haxe.EnumFlags<FormatFlags>,
-	pos:Int,
-	width:Null<Int>,
-	precision:Null<Int>
+	public var message:String;
+	
+	public function new(message:String) 
+	{
+		this.message = message;
+	}
+	
+	public function toString():String
+	{
+		return message;
+	}
 }
 
-private enum FormatFlags
+@:publicFields
+@:structInit
+private class FormatArgs
+{
+	var flags:haxe.EnumFlags<FormatFlag>;
+	var pos:Int;
+	var width:Null<Int>;
+	var precision:Null<Int>;
+}
+
+private enum FormatFlag
 {
 	Minus;
 	Plus;
 	Space;
 	Sharp;
 	Zero;
+	
 	LengthH;
-	LengthL;
-	Lengthl;
+	LengthUpperCaseL;
+	LengthLowerCaseL;
 	UpperCase;
 }
 
 private enum FormatToken
 {
-	BareString(str:String);
+	Raw(string:String);
 	Tag(type:FormatDataType, args:FormatArgs);
 	Property(name:String);
-	Unknown(str:String, pos:Int);
+	Unknown(string:String, pos:Int);
 }
 
 private enum FormatDataType
 {
-	FmtInteger(integerType:IntegerType);
+	FmtInt(intType:IntType);
 	FmtFloat(floatType:FloatType);
 	FmtString;
 	FmtPointer;
 	FmtNothing;
 }
 
-private enum IntegerType
+private enum IntType
 {
 	ICharacter;
 	ISignedDecimal;
