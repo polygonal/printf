@@ -19,9 +19,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 package de.polygonal;
 
 import haxe.EnumFlags;
-import haxe.ds.IntMap;
-
-import haxe.ds.Vector;
 
 #if macro
 import haxe.macro.Expr;
@@ -29,24 +26,23 @@ import haxe.macro.Context;
 import haxe.macro.Type;
 #end
 
-using Std;
-
 /**
- * <p>C printf implementation.</p>
- * <p>See <a href="https://github.com/polygonal/printf" target="_blank">https://github.com/polygonal/printf</a>.</p>
+	C printf implementation
+	
+	@see https://github.com/polygonal/printf
  */
 class Printf
 {
 	inline static var DEFAULT_PRECISION = 6;
 	
 	#if macro
-	static var formatIntFuncNameHash:IntMap<String>;
-	static var formatFloatFuncNameHash:IntMap<String>;
-	static var formatStringFuncNameHash:IntMap<String>;
+	static var formatIntFuncNameHash: haxe.ds.IntMap<String>;
+	static var formatFloatFuncNameHash: haxe.ds.IntMap<String>;
+	static var formatStringFuncNameHash: haxe.ds.IntMap<String>;
 	
 	static function makeNameHashes()
 	{
-		formatIntFuncNameHash = new IntMap();
+		formatIntFuncNameHash = new  haxe.ds.IntMap();
 		formatIntFuncNameHash.set(std.Type.enumIndex(ISignedDecimal), "formatSignedDecimal");
 		formatIntFuncNameHash.set(std.Type.enumIndex(IUnsignedDecimal), "formatUnsignedDecimal");
 		formatIntFuncNameHash.set(std.Type.enumIndex(ICharacter), "formatCharacter");
@@ -54,12 +50,12 @@ class Printf
 		formatIntFuncNameHash.set(std.Type.enumIndex(IOctal), "formatOctal");
 		formatIntFuncNameHash.set(std.Type.enumIndex(IBin), "formatBin");
 		
-		formatFloatFuncNameHash = new IntMap();
+		formatFloatFuncNameHash = new  haxe.ds.IntMap();
 		formatFloatFuncNameHash.set(std.Type.enumIndex(FNormal), "formatNormalFloat");
 		formatFloatFuncNameHash.set(std.Type.enumIndex(FScientific), "formatScientific");
 		formatFloatFuncNameHash.set(std.Type.enumIndex(FNatural), "formatNaturalFloat");
 		
-		formatStringFuncNameHash = new IntMap();
+		formatStringFuncNameHash = new  haxe.ds.IntMap();
 		formatStringFuncNameHash.set(std.Type.enumIndex(FmtString), "formatString");
 	}
 	#end
@@ -90,7 +86,7 @@ class Printf
 	macro public static function eformat(_fmt:ExprOf<String>, _passedArgs:Array<Expr>):ExprOf<String>
 	{
 		var error = false;
-		switch(Context.typeof(_fmt))
+		switch (Context.typeof(_fmt))
 		{
 			case TInst(t, _):
 				error = t.get().name != "String";
@@ -352,7 +348,7 @@ class Printf
 							[
 								{field:"width", expr:widthExpr },
 								{field:"precision", expr:precisionExpr },
-								{field:"flags", expr:macro haxe.EnumFlags.ofInt($flagsIntExpr) },
+								{field:"flags", expr:macro EnumFlags.ofInt($flagsIntExpr) },
 								{field:"pos", expr:Context.makeExpr(args.pos, Context.currentPos()) }
 							]), pos:Context.currentPos() };
 					
@@ -408,7 +404,7 @@ class Printf
 					var formatFunction:Dynamic->FormatArgs->String;
 					var formatFunctionName:String;
 					
-					switch(type)
+					switch (type)
 					{
 						case FmtFloat(floatType):
 							if (preComputable && !Std.is(value, Float) && !Std.is(value, Int))
@@ -490,7 +486,7 @@ class Printf
 	/**
 		Writes formatted data to a string.
 		
-		Runtime, essential features.
+		Evaluation is done at run-time.
 	 */
 	public static function format(fmt:String, args:Array<Dynamic>):String
 	{
@@ -500,20 +496,11 @@ class Printf
 			init();
 		}
 		
-		for (i in 0...args.length)
-			if (args[i] == null) args[i] = "null";
-		
-		var output = "";
+		var output = new StringBuf();
 		var argIndex = 0;
-		
 		var tokens = _tokenList;
-		
-		
-		
 		for (i in 0...tokenize(fmt, tokens))
 		{
-			trace(tokens[i]);
-			
 			switch (tokens[i])
 			{
 				case Unknown(_, _):
@@ -521,12 +508,12 @@ class Printf
 				
 				case Raw(string):
 					trace('raw string=[$string]');
-					output += string;
+					output.add(string);
 				
 				case Property(name):
 					if (!Reflect.hasField(args[0], name))
 						throw new PrintfError("no field named " + name);
-					output += Std.string(Reflect.field(args[0], name));
+					output.add(Std.string(Reflect.field(args[0], name)));
 				
 				case Tag(type, tagArgs):
 					if (tagArgs.width == null)
@@ -575,11 +562,13 @@ class Printf
 							throw new PrintfError("specifier 'n' is not supported");
 					};
 					
-					output += f(args[argIndex++], tagArgs);
+					var value = args[argIndex++];
+					if (value == null) value = "null";
+					output.add(f(value, tagArgs));
 			}
 		}
 		
-		return output;
+		return output.toString();
 	}
 	
 	static function tokenize(fmt:String, output:Array<FormatToken>):Int
@@ -1234,7 +1223,7 @@ class PrintfError
 @:structInit
 private class FormatArgs
 {
-	var flags:haxe.EnumFlags<FormatFlag>;
+	var flags:EnumFlags<FormatFlag>;
 	var pos:Int;
 	var width:Null<Int>;
 	var precision:Null<Int>;
@@ -1247,7 +1236,6 @@ private enum FormatFlag
 	Space;
 	Sharp;
 	Zero;
-	
 	LengthH;
 	LengthUpperCaseL;
 	LengthLowerCaseL;
@@ -1264,7 +1252,7 @@ private enum FormatToken
 
 private enum FormatDataType
 {
-	FmtInt(intType:IntType);
+	FmtInt(type:IntType);
 	FmtFloat(floatType:FloatType);
 	FmtString;
 	FmtPointer;
