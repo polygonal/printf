@@ -138,9 +138,19 @@ class TestPrintf extends haxe.unit.TestCase
 		//scientific notation (mantissa/exponent), lowercase/uppercase
 		
 		assertEquals("3.920000e+02"	, f("%e"		, [392]));
+		assertEquals(" 3.920000e+02", f("% e"		, [392]));
+		assertEquals("3.920000e+02"	, f("%e"		, [392]));
 		assertEquals("3.920000E+02"	, f("%E"		, [392]));
 		assertEquals("3.141600e+00"	, f("%e"		, [3.1416]));
 		assertEquals("3.141600E+00"	, f("%E"		, [3.1416]));
+		assertEquals("+3e+00"		, f("%+.0e"		, [3.1416]));
+		assertEquals("+3.142e+00"	, f("%+.3e"		, [3.1416]));
+		assertEquals("   3.142e+00"	, f("%12.3e"	, [3.1416]));
+		assertEquals("  +3.142e+00"	, f("%+12.3e"	, [3.1416]));
+		assertEquals("0003.142e+00"	, f("%012.3e"	, [3.1416]));
+		assertEquals("+003.142e+00"	, f("%+012.3e"	, [3.1416]));
+		assertEquals("-003.142e+00"	, f("%012.3e"	, [-3.1416]));
+		assertEquals("-003.142e+00"	, f("%+012.3e"	, [-3.1416]));
 	}
 	
 	function test_gG()

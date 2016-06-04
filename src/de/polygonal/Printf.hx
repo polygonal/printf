@@ -1033,21 +1033,36 @@ class Printf
 		}
 		else
 		{
+			var m = Math;
 			sign = (value > 0.) ? 1 : (value < 0. ? -1 : 0);
-			value = Math.abs(value);
-			exponent = Math.floor(Math.log(value) / 2.302585092994046); //LN10
-			value = value / Math.pow(10, exponent);
-			var p = Math.pow(0.1, p);
-			value = roundTo(value, p);
+			value = m.abs(value);
+			exponent = m.floor(Math.log(value) / 2.302585092994046); //LN10
+			value = value / m.pow(10, exponent);
+			value = roundTo(value, m.pow(0.1, p));
 		}
 		
-		s += (sign < 0 ? "-" : f.has(Plus) ? "+" : "");
-		
 		if (value != 0)
-			s += pad(Std.string(value).substr(0, p + 2), p + 2, PAD_SPACE, 1);
+			s += Std.string(value).substr(0, p + 2);
+		
 		s += f.has(UpperCase) ? "E" : "e";
 		s += exponent >= 0 ? "+" : "-";
-		return s + pad(Std.string(iabs(exponent)), DEFAULT_NUM_EXP_DIGITS, PAD_0, -1);
+		s += pad(Std.string(iabs(exponent)), DEFAULT_NUM_EXP_DIGITS, PAD_0, -1);
+		
+		var printSign = sign == -1 || (f.has(Plus) || f.has(Space));
+		if (printSign && !f.has(Zero))
+			s = (sign == -1 ? "-" : (f.has(Plus) ? "+" : " ")) + s;
+		
+		if (args.width > 0)
+		{
+			var w = args.width;
+			if (printSign && f.has(Zero)) w--;
+			s = pad(s, w, f.has(Zero) ? PAD_0 : PAD_SPACE, -1);
+		}
+		
+		if (printSign && f.has(Zero))
+			s = (sign == -1 ? "-" : (f.has(Plus) ? "+" : " ")) + s;
+		
+		return s;
 	}
 	
 	static function formatFloat(value:Float, args:FormatArgs):String
