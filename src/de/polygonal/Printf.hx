@@ -1094,6 +1094,12 @@ class Printf
 			#end
 		}
 		
+		if (f.has(Zero))
+		{
+			if (value < 0 || f.has(Plus)) w--;
+			s = pad(s, w, PAD_0, -1);
+		}
+		
 		if (value >= 0)
 		{
 			if (f.has(Plus))
@@ -1103,7 +1109,6 @@ class Printf
 				s = " " + s;
 		}
 		
-		if (f.has(Zero)) s = pad(s, (value < 0) ? w - 1 : w, PAD_0, -1);
 		return pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
 	}
 	
