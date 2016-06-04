@@ -34,7 +34,15 @@ import haxe.macro.Type;
  */
 class Printf
 {
-	inline static var DEFAULT_PRECISION = 6;
+	/**
+		#digits to be printed after the decimal point; default is 6.
+	**/
+	public static var DEFAULT_PRECISION = 6;
+	
+	/**
+		#digits for the exponent part; default is 2.
+	**/
+	public static var DEFAULT_NUM_EXP_DIGITS = 2;
 	
 	#if macro
 	static var formatIntFuncNameHash: haxe.ds.IntMap<String>;
@@ -1039,14 +1047,7 @@ class Printf
 			s += pad(Std.string(value).substr(0, p + 2), p + 2, PAD_SPACE, 1);
 		s += f.has(UpperCase) ? "E" : "e";
 		s += exponent >= 0 ? "+" : "-";
-		
-		if (exponent < 10)
-			s += "00";
-		else
-		if (exponent < 100)
-			s += "0";
-		
-		return s + iabs(exponent);
+		return s + pad(Std.string(iabs(exponent)), DEFAULT_NUM_EXP_DIGITS, PAD_0, -1);
 	}
 	
 	static function formatFloat(value:Float, args:FormatArgs):String
