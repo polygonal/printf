@@ -35,12 +35,12 @@ import haxe.macro.Type;
 class Printf
 {
 	/**
-		#digits to be printed after the decimal point; default is 6.
+		Number of digits to be printed after the decimal point; default is 6.
 	**/
 	public static var DEFAULT_PRECISION = 6;
 	
 	/**
-		#digits for the exponent part; default is 2.
+		Number of digits to be printed for the exponent part; default is 2.
 	**/
 	public static var DEFAULT_NUM_EXP_DIGITS = 2;
 	
@@ -510,7 +510,7 @@ class Printf
 		Writes formatted data to a string.
 		
 		Evaluation is done at run-time.
-	 */
+	**/
 	public static function format(fmt:String, args:Array<Dynamic>):String
 	{
 		if (!_initialized)
