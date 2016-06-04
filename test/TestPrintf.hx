@@ -128,6 +128,9 @@ class TestPrintf extends haxe.unit.TestCase
 		assertEquals("0003."		, f("%0#5.0f"	, [3.0]));
 		assertEquals("0.0000001"	, f("%.7f"		, [0.0000001]));
 		assertEquals("0.00000010"	, f("%.8f"		, [0.0000001]));
+		assertEquals("    3"		, f("%5.0f"		, [3.1416]));
+		assertEquals(" 0003"		, f("% 05.0f"	, [3.1416]));
+		assertEquals(" 003."		, f("% 0#5.0f"	, [3.1416]));
 	}
 	
 	function test_eE()

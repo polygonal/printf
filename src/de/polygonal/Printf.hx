@@ -1097,6 +1097,7 @@ class Printf
 		if (f.has(Zero))
 		{
 			if (value < 0 || f.has(Plus)) w--;
+			if (value > 0 && f.has(Space)) w--;
 			s = pad(s, w, PAD_0, -1);
 		}
 		
