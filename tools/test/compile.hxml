@@ -1,0 +1,3 @@
+-neko main.n
+-main Main
+-lib hxargs
