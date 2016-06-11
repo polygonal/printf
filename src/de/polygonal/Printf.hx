@@ -74,8 +74,9 @@ class Printf
 	
 	inline static var PAD_0 = 0;
 	inline static var PAD_SPACE = 20;
-	
 	static var _padChars:Vector<String>;
+	
+	static var _tmp:Vector<Int>;
 	
 	static function init()
 	{
@@ -88,6 +89,8 @@ class Printf
 		_padChars = new Vector(40);
 		for (i in 0...20) _padChars.set(i     , StringTools.rpad("", "0", i));
 		for (i in 0...20) _padChars.set(i + 20, StringTools.rpad("", " ", i));
+		
+		_tmp = new Vector(64);
 	}
 	
 	/**
@@ -553,7 +556,7 @@ class Printf
 						tagArgs.precision = args[argIndex++];
 					}
 					
-					var f:Dynamic->FormatArgs->String =
+					var f:Dynamic->FormatArgs->StringBuf->Void =
 					switch (type)
 					{
 						case FmtFloat(floatType):
@@ -596,13 +599,14 @@ class Printf
 						value = args[argIndex++];
 					
 					if (value == null) value = "null";
-					output.add(f(value, tagArgs));
+					f(value, tagArgs, output);
 			}
 		}
 		
 		return output.toString();
 	}
 	
+	//TODO use array
 	static function tokenize(fmt:String, output:Array<FormatToken>):Int
 	{
 		var i = 0, c = 0, n = 0;
@@ -803,201 +807,334 @@ class Printf
 		return n;
 	}
 	
-	static function formatBinary(value:Int, args:FormatArgs):String
+	
+	
+	static function formatBinary(value:Int, args:FormatArgs, buf:StringBuf)
 	{
-		var s = "";
 		var f = args.flags;
 		var p = args.precision;
-		if (p == -1) p = 1;
 		var w = args.width;
 		
-		if (value != 0)
+		if (f.has(LengthH)) value &= 0xffff;
+		
+		if (value == 0)
 		{
-			if (f.has(LengthH)) value &= 0xffff;
+			if (p == 0) return;
+			f.unset(Sharp);
+		}
+		
+		if (p == -1) p = 1;
+		
+		var tmp = _tmp;
+		var l = 0;
+		do
+		{
+			tmp[l++] = value & 1;
+			value >>>= 1;
+		}
+		while (value > 0);
+		var m = l;
+		
+		if (f.has(Minus))
+		{
+			if (f.has(Sharp)) buf.add("0b");
 			
-			#if flash
-			var n:UInt = value;
-			s = untyped n.toString(2);
-			#else
-			do
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			while (--m > -1) buf.addChar("0".code + tmp[m]);
+			var k = l;
+			if (f.has(Sharp)) w -= 2;
+			if (p > l) l = p;
+			if (w > l) for (i in 0...w - l) buf.add(" ");
+		}
+		else
+		{
+			var k = l;
+			if (p > k) k = p;
+			
+			if (f.has(Sharp)) w -= 2;
+			
+			if (w > k)
 			{
-				s = ((value & 1) > 0 ? "1" : "0") + s;
-				value >>>= 1;
+				if (f.has(Zero) && p == 1)
+					for (i in 0...w - k) buf.add("0");
+				else
+					for (i in 0...w - k) buf.add(" ");
 			}
-			while (value > 0);
-			#end
 			
-			if (f.has(Sharp)) s = "b" + s;
-			if (p > 1 && s.length < p) s = pad(s, p, PAD_0, -1);
+			if (f.has(Sharp)) buf.add("0b");
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			while (--m > -1) buf.addChar("0".code + tmp[m]);
 		}
-		
-		if (w > s.length)
-		{
-			s =
-			if (f.has(Minus))
-				pad(s, w, PAD_SPACE, 1);
-			else
-				f.has(Zero) ? pad(s, w, PAD_0, -1) : pad(s, w, PAD_SPACE, -1);
-		}
-		
-		return s;
 	}
 	
-	static function formatOctal(value:Int, args:FormatArgs):String
+	static function formatOctal(value:Int, args:FormatArgs, buf:StringBuf)
 	{
-		var s = "";
 		var f = args.flags;
 		var p = args.precision;
-		if (p == -1) p = 1;
 		var w = args.width;
 		
-		if (value != 0)
+		if (f.has(LengthH)) value &= 0xffff;
+		
+		if (value == 0)
 		{
-			if (f.has(LengthH)) value &= 0xffff;
-			
-			#if flash
-			var n:UInt = value;
-			s = untyped n.toString(8);
-			#else
-			do
+			if (p == 0)
 			{
-				s = (value & 7) + s;
-				value >>>= 3;
+				buf.add(f.has(Sharp) ? "0" : "");
+				return;
 			}
-			while (value > 0);
-			#end
-			
-			if (f.has(Sharp)) s = "0" + s;
-			if (p > 1 && s.length < p) s = pad(s, p, PAD_0, -1);
+			f.unset(Sharp);
 		}
 		
-		if (w > s.length)
+		var tmp = _tmp;
+		var l = 0;
+		do
 		{
-			s =
-			if (f.has(Minus))
-				pad(s, w, PAD_SPACE, 1);
-			else
-				pad(s, w, f.has(Zero) ? PAD_0 : PAD_SPACE, -1);
+			tmp[l++] = value & 7;
+			value >>>= 3;
 		}
+		while (value > 0);
+		var m = l;
 		
-		return s;
+		if (p != -1)
+		{
+			if (f.has(Zero))
+			{
+				f.unset(Zero);
+				f.set(Space);
+			}
+		}
+		else
+			p  = 1;
+		
+		if (f.has(Minus))
+		{
+			if (f.has(Sharp))
+			{
+				buf.add("0");
+				l++;
+			}
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			
+			while (--m > -1) buf.addChar("0".code + tmp[m]);
+			
+			var k = l;
+			if (p > l) l = p;
+			if (w > l) for (i in 0...w - l) buf.add(" ");
+		}
+		else
+		{
+			if (f.has(Sharp)) l++;
+			
+			var k = l;
+			if (p > k) k = p;
+			if (w > k)
+			{
+				if (f.has(Zero))
+					for (i in 0...w - k) buf.add("0");
+				else
+					for (i in 0...w - k) buf.add(" ");
+			}
+			if (f.has(Sharp)) buf.add("0");
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			
+			while (--m > -1) buf.addChar("0".code + tmp[m]);
+		}
 	}
 	
-	static function formatHexadecimal(value:Int, args:FormatArgs):String
+	static function formatHexadecimal(value:Int, args:FormatArgs, buf:StringBuf)
 	{
-		var s = "";
 		var f = args.flags;
 		var p = args.precision;
-		if (p == -1) p = 1;
 		var w = args.width;
 		
-		if (value != 0)
+		if (f.has(LengthH)) value &= 0xffff;
+		
+		if (value == 0)
 		{
-			if (f.has(LengthH)) value &= 0xffff;
-			
-			#if flash
-			var n:UInt = value;
-			s = untyped n.toString(16);
-			#else
-			var hexChars = "0123456789ABCDEF";
-			do
+			if (p == 0) return;
+			f.unset(Sharp);
+		}
+		
+		if (p == -1) p = 1;
+		
+		var tmp = _tmp;
+		var l = 0;
+		do
+		{
+			tmp[l++] = value & 15;
+			value >>>= 4;
+		}
+		while (value > 0);
+		var m = l;
+		
+		inline function addNumber()
+		{
+			var a = f.has(UpperCase) ? "A".code : "a".code;
+			while (--m > -1)
 			{
-				s = hexChars.charAt(value & 15) + s;
-				value >>>= 4;
+				var v = tmp[m];
+				if (v < 10)
+					buf.addChar("0".code + v);
+				else
+					buf.addChar(a + v - 10);
 			}
-			while (value > 0);
-			#end
+		}
+		
+		if (f.has(Minus))
+		{
+			if (f.has(Sharp))
+			{
+				if (f.has(UpperCase))
+					buf.add("0X");
+				else
+					buf.add("0x");
+			}
+			
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			
+			addNumber();
+			
+			var k = l;
+			if (f.has(Sharp)) w -= 2;
+			if (p > l) l = p;
+			if (w > l) for (i in 0...w - l) buf.add(" ");
+		}
+		else
+		{
+			var k = l;
+			if (p > k) k = p;
+			
+			if (f.has(Sharp)) w -= 2;
+			
+			if (w > k)
+			{
+				if (f.has(Zero) && p == 1)
+					for (i in 0...w - k) buf.add("0");
+				else
+					for (i in 0...w - k) buf.add(" ");
+			}
 			
 			if (f.has(Sharp))
 			{
 				if (f.has(UpperCase))
-					s = "0X" + s;
+					buf.add("0X");
 				else
-					s = "0x" + s;
+					buf.add("0x");
 			}
-			if (p > 1 && s.length < p) s = pad(s, p, PAD_0, -1);
 			
-			#if flash
-			s = f.has(UpperCase) ? s.toUpperCase() : s;
-			#else
-			s = f.has(UpperCase) ? s : s.toLowerCase();
-			#end
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			
+			addNumber();
 		}
-		
-		if (w > s.length)
-		{
-			s =
-			if (f.has(Minus))
-				pad(s, w, PAD_SPACE, 1);
-			else
-				f.has(Zero) ? pad(s, w, PAD_0, -1) : pad(s, w, PAD_SPACE, -1);
-		}
-		
-		return s;
 	}
 	
-	static function formatSignedDecimal(value:Int, args:FormatArgs):String
+	static function formatSignedDecimal(value:Int, args:FormatArgs, buf:StringBuf)
 	{
 		var f = args.flags;
 		var p = args.precision;
 		var w = args.width;
-		
-		if (p == 0 && value == 0) return "";
+		if (p == 0 && value == 0) return;
 		
 		if (f.has(LengthH)) value &= 0xffff;
-		
 		var s = Std.string(iabs(value));
-		if (p > 1) s = pad(s, p, PAD_0, -1);
-		if (f.has(Zero)) s = pad(s, value < 0 ? w - 1 : w, PAD_0, -1);
-		if (value < 0) s = "-" + s;
-		if (value >= 0)
+		var l = s.length;
+		var sign =
+		if (value < 0)
+			"-".code;
+		else
 		{
 			if (f.has(Plus))
-				s = "+" + s;
+				"+".code;
 			else
 			if (f.has(Space))
-				s = " " + s;
+				" ".code;
+			else
+				0;
 		}
 		
-		return pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
+		if (f.has(Minus))
+		{
+			if (sign > 0) buf.addChar(sign);
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			
+			buf.add(s);
+			
+			var k = l;
+			if (p > l) l = p;
+			l += (sign > 0 ? 1 : 0);
+			if (w > l) for (i in 0...w - l) buf.add(" ");
+		}
+		else
+		{
+			var k = l + (sign > 0 ? 1 : 0);
+			if (p > k) k = p;
+			if (w > k)
+			{
+				if (f.has(Zero))
+				{
+					if (sign > 0) buf.addChar(sign);
+					for (i in 0...w - k) buf.add("0");
+				}
+				else
+					for (i in 0...w - k) buf.add(" ");
+			}
+			
+			if (sign > 0 && !f.has(Zero))
+				buf.addChar(sign);
+			
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			buf.add(s);
+		}
 	}
 	
-	static function formatUnsignedDecimal(value:Int, args:FormatArgs):String
+	static function formatUnsignedDecimal(value:Int, args:FormatArgs, buf:StringBuf)
 	{
-		if (value >= 0) return formatSignedDecimal(value, args);
+		if (value >= 0)
+		{
+			formatSignedDecimal(value, args, buf);
+			return;
+		}
 		
-		var s;
-		
-		var x = haxe.Int64.make(0, value);
-		s = haxe.Int64.toStr(x);
-		
-		var p = args.precision;
-		if (p > 1) s = pad(s, p, PAD_SPACE, -1);
+		var s = haxe.Int64.toStr(haxe.Int64.make(0, value));
+		var l = s.length;
 		
 		var f = args.flags;
+		var p = args.precision;
 		var w = args.width;
 		
-		if (f.has(Zero))
-			s = pad(s, w, PAD_0, -1);
+		if (f.has(Minus))
+		{
+			if (p > l) for (i in 0...p - l) buf.add("0");
 			
-		if (f.has(Plus))
-			s = "+" + s;
+			buf.add(s);
+			
+			if (p > l) l = p;
+			if (w > l) for (i in 0...w - l) buf.add(" ");
+		}
 		else
-		if (f.has(Space))
-			s = " " + s;
-		
-		s = pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
-		
-		return s;
+		{
+			var k = l;
+			if (p > k) k = p;
+			if (w > k)
+			{
+				if (f.has(Zero))
+					for (i in 0...w - k) buf.add("0");
+				else
+					for (i in 0...w - k) buf.add(" ");
+			}
+			
+			if (p > l) for (i in 0...p - l) buf.add("0");
+			buf.add(s);
+		}
 	}
 	
-	static function formatNaturalFloat(value:Float, args:FormatArgs):String
+	static function formatNaturalFloat(value:Float, args:FormatArgs, buf:StringBuf)
 	{
 		//TODO: precompute lengths
-		args.precision = 0;
+		/*args.precision = 0;
 		
-		var formatedFloat = formatFloat(value, args);
-		var formatedScientific = formatScientific(value, args);
+		var formatedFloat = formatFloat(value, args, buf);
+		var formatedScientific = formatScientific(value, args, buf);
 		if (args.flags.has(Sharp))
 		{
 			if (formatedFloat.indexOf(".") != -1)
@@ -1007,10 +1144,12 @@ class Printf
 				formatedFloat = formatedFloat.substr(0, pos);
 			}
 		}
-		return (formatedFloat.length <= formatedScientific.length) ? formatedFloat : formatedScientific;
+		var s = (formatedFloat.length <= formatedScientific.length) ? formatedFloat : formatedScientific;
+		
+		buf.add(s);*/
 	}
 	
-	static function formatScientific(value:Float, args:FormatArgs):String
+	static function formatScientific(value:Float, args:FormatArgs, buf:StringBuf)
 	{
 		var f = args.flags;
 		var p = args.precision;
@@ -1062,10 +1201,10 @@ class Printf
 		if (printSign && f.has(Zero))
 			s = (sign == -1 ? "-" : (f.has(Plus) ? "+" : " ")) + s;
 		
-		return s;
+		buf.add(s);
 	}
 	
-	static function formatFloat(value:Float, args:FormatArgs):String
+	static function formatFloat(value:Float, args:FormatArgs, buf:StringBuf)
 	{
 		var f = args.flags;
 		var p = args.precision;
@@ -1125,24 +1264,60 @@ class Printf
 				s = " " + s;
 		}
 		
-		return pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
+		s = pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
+		
+		buf.add(s);
 	}
 	
-	static function formatCharacter(x:Int, args:FormatArgs):String
+	
+	
+	
+	static function formatCharacter(x:Int, args:FormatArgs, buf:StringBuf)
 	{
-		var s = String.fromCharCode(x);
-		if (args.width > 1)
-			s = pad(s, args.width, PAD_SPACE, args.flags.has(Minus) ? 1 : -1);
-		return s;
+		if (args.flags.has(Minus))
+		{
+			buf.add(String.fromCharCode(x));
+			for (i in 0...args.width - 1) buf.add(" ");
+		}
+		else
+		{
+			for (i in 0...args.width - 1) buf.add(" ");
+			buf.add(String.fromCharCode(x));
+		}
 	}
 	
-	static function formatString(value:String, args:FormatArgs):String
+	static function formatString(value:String, args:FormatArgs, buf:StringBuf)
 	{
+		var l = value.length;
+		
 		var s = value;
-		if (args.precision > 0) s = value.substr(0, args.precision);
-		if (args.width > 0) s = pad(s, args.width, PAD_SPACE, args.flags.has(Minus) ? 1 : -1);
-		return s;
+		var p = args.precision;
+		
+		if (args.flags.has(Minus))
+		{
+			if (p != -1)
+			{
+				buf.addSub(value, 0, p);
+				l = p;
+			}
+			else
+				buf.add(value);
+			for (i in 0...args.width - l) buf.add(" ");
+		}
+		else
+		{
+			if (p != -1) l = p;
+			for (i in 0...args.width - l) buf.add(" ");
+			if (p != -1)
+				buf.addSub(value, 0, p);
+			else
+				buf.add(value);
+		}
 	}
+	
+	
+	
+	
 	
 	static inline function pad(s:String, l:Int, type:Int, dir:Int):String
 	{
@@ -1160,20 +1335,18 @@ class Printf
 			}
 			else
 				t = _padChars[type + c];
-				
+			
 			return dir > 0 ? s + t : t + s;
 		}
 	}
 	
+	//TODO static inline function max(a:Int, b:Int) return a < b ? a : b;
+	
 	@:extern static inline function roundTo(x:Float, y:Float):Float
-	{
 		return Math.round(x / y) * y;
-	}
 	
 	@:extern static inline function iabs(x:Int):Int
-	{
 		return x < 0 ? -x : x;
-	}
 }
 
 class PrintfError
