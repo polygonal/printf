@@ -1,6 +1,7 @@
 {
 	"name": "polygonal-printf",
 	"license": "MIT",
+	"classPath": "src",
 	"description": "c printf implementation",
 	"url": "https://github.com/polygonal/printf",
 	"tags": ["cross", "utility"],
