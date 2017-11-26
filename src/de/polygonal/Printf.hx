@@ -44,33 +44,7 @@ class Printf
 	**/
 	public static var DEFAULT_NUM_EXP_DIGITS = 2;
 	
-	#if macro
-	static var formatIntFuncNameHash: haxe.ds.IntMap<String>;
-	static var formatFloatFuncNameHash: haxe.ds.IntMap<String>;
-	static var formatStringFuncNameHash: haxe.ds.IntMap<String>;
-	
-	static function makeNameHashes()
-	{
-		formatIntFuncNameHash = new  haxe.ds.IntMap();
-		formatIntFuncNameHash.set(std.Type.enumIndex(ISignedDecimal), "formatSignedDecimal");
-		formatIntFuncNameHash.set(std.Type.enumIndex(IUnsignedDecimal), "formatUnsignedDecimal");
-		formatIntFuncNameHash.set(std.Type.enumIndex(ICharacter), "formatCharacter");
-		formatIntFuncNameHash.set(std.Type.enumIndex(IHex), "formatHex");
-		formatIntFuncNameHash.set(std.Type.enumIndex(IOctal), "formatOctal");
-		formatIntFuncNameHash.set(std.Type.enumIndex(IBin), "formatBin");
-		
-		formatFloatFuncNameHash = new  haxe.ds.IntMap();
-		formatFloatFuncNameHash.set(std.Type.enumIndex(FNormal), "formatNormalFloat");
-		formatFloatFuncNameHash.set(std.Type.enumIndex(FScientific), "formatScientific");
-		formatFloatFuncNameHash.set(std.Type.enumIndex(FNatural), "formatNaturalFloat");
-		
-		formatStringFuncNameHash = new  haxe.ds.IntMap();
-		formatStringFuncNameHash.set(std.Type.enumIndex(FmtString), "formatString");
-	}
-	#end
-	
 	static var _initialized = false;
-	static var _tokenList:Array<FormatToken>; //TODO
 	
 	inline static var PAD_0 = 0;
 	inline static var PAD_SPACE = 20;
@@ -80,433 +54,10 @@ class Printf
 	
 	static function init()
 	{
-		#if macro
-		makeNameHashes();
-		#end
-		
-		_tokenList = [];
-		
 		_padChars = new Vector(40);
 		for (i in 0...20) _padChars.set(i     , StringTools.rpad("", "0", i));
 		for (i in 0...20) _padChars.set(i + 20, StringTools.rpad("", " ", i));
-		
 		_tmp = new Vector(64);
-	}
-	
-	/**
-	 * Writes formatted data to a string.
-	 * Compile time, advanced features.
-	 * @param fmt the string that contains the formatted text.<br/>
-	 * It can optionally contain embedded format tags that are substituted by the values specified in subsequent argument(s) and formatted as requested.<br/>
-	 * The number of arguments following the format parameters should at least be as much as the number of format tags.<br/>
-	 * The format tags follow this prototype: '%[flags][width][.precision][length]specifier'.
-	 * @param arg depending on the format string, the function may expect a sequence of additional arguments, each containing one value to be inserted instead of each %-tag specified in the format parameter, if any.<br/>
-	 * The argument array length should match the number of %-tags that expect a value.
-	 * @return the formatted string.
-	 */
-	macro public static function eformat(_fmt:ExprOf<String>, _passedArgs:Array<Expr>):ExprOf<String>
-	{
-		var error = false;
-		switch (Context.typeof(_fmt))
-		{
-			case TInst(t, _):
-				error = t.get().name != "String";
-			
-			case _:
-				error = true;
-		}
-		
-		if (error)
-			Context.error("format should be a string", _fmt.pos);
-		
-		var _args:ExprOf<Array<Dynamic>>;
-		if (_passedArgs == null || _passedArgs.length == 0)
-			_args = Context.makeExpr([], Context.currentPos());
-		else
-		{
-			var makeArray = true;
-			if (_passedArgs.length == 1)
-				switch(Context.typeof({expr:ECheckType(_passedArgs[0],(macro : Array<Dynamic>)), pos:_passedArgs[0].pos}))
-				{
-					case TInst(t, _):
-						if (t.get().name == "Array")
-							makeArray = false;
-					
-					case _:
-						makeArray = true;
-				};
-			
-			if (makeArray)
-			{
-				var min = Context.getPosInfos(_passedArgs[0].pos).min;
-				var max = Context.getPosInfos(_passedArgs[_passedArgs.length - 1].pos).max;
-				var file = Context.getPosInfos(Context.currentPos()).file;
-				var pos = Context.makePosition( { min:min, max:max, file:file } );
-				_args = { expr:EArrayDecl(_passedArgs), pos:pos };
-			}
-			else
-				_args = _passedArgs[0];
-		}
-		
-		// Force _args array to be typed as Array<Dynamic>
-		var dynArrayType:ComplexType = macro : Array<Dynamic>;
-		_args = { expr:ECheckType(_args, dynArrayType), pos:_args.pos };
-		
-		switch(Context.typeof(_args))
-		{
-			case TInst(t, _):
-				error = t.get().name != "Array";
-			
-			case _:
-				error = true;
-		}
-		
-		if (error)
-			Context.error("arguments should be an array", _args.pos);
-		
-		var fmt:String = null;
-		var fmtArgs:Array<Expr> = null;
-		
-		switch(_fmt.expr) 
-		{
-			case EConst(const):
-				switch(const)
-				{
-					case CString(valStr):
-						fmt = valStr;
-					case _:
-				}
-			
-			case _:
-		}
-		
-		switch(_args.expr)
-		{
-			case EArrayDecl(values):
-				fmtArgs = values;
-			
-			case _:
-		}
-		
-		
-		if (!_initialized)
-		{
-			_initialized = true;
-			init();
-		}
-		
-		
-		if (fmt == null)
-			return macro de.polygonal.Printf.format($_fmt, $_args);
-		
-		var fmtTokens:Array<FormatToken> = null;
-		var n = -1;
-		
-		try
-		{
-			n = tokenize(fmt, fmtTokens);
-		}
-		catch (e:Dynamic)
-		{
-			Context.error(Std.string(e), _fmt.pos);
-		}
-		
-		var instanceExpr = { expr:EConst(CIdent("Printf")), pos:Context.currentPos() };
-		var outputArr:Array<Expr> = new Array();
-		
-		var knownArgs = fmtArgs != null;
-		var argsIndex = 0;
-		var usedArgs:Array<Bool> = new Array();
-		if (knownArgs)
-			for (i in 0...fmtArgs.length)
-				usedArgs.push(false);
-		
-		if (!_initialized)
-		{
-			_initialized = true;
-			init();
-		}
-		
-		for (i in 0...n)
-		{
-			var token = fmtTokens[i];
-			switch(token)
-			{
-				case Unknown(_, pos):
-					
-					var min = Context.getPosInfos(_fmt.pos).min + pos;
-					var max = min + 1;
-					var file = Context.getPosInfos(Context.currentPos()).file;
-					Context.error("invalid format specifier", Context.makePosition( { min:min, max:max, file:file } ));
-				
-				case Raw(string):
-					outputArr.push(Context.makeExpr(string, Context.currentPos()));
-				
-				case Property(name):
-					var objExpr = (knownArgs)?
-						fmtArgs[0]:
-						{ expr:EArray(_args, Context.makeExpr(0, _args.pos)), pos:_args.pos };
-						
-					usedArgs[0] = true;
-					
-					var valueExpr:Expr = null;
-					switch(objExpr.expr)
-					{
-						case EObjectDecl(fields):
-							for (field in fields)
-							{
-								if (field.field == name)
-								{
-									valueExpr = field.expr;
-									break;
-								}
-							}
-						
-						case _:
-					}
-					if (valueExpr == null)
-						valueExpr = { expr:EField(objExpr, name), pos:objExpr.pos };
-					
-					var outputExpr = macro Std.string($valueExpr);
-					outputArr.push(outputExpr);
-				
-				case Tag(type, args):
-					var widthExpr = Context.makeExpr(args.width, Context.currentPos());
-					if (args.width == null)
-					{
-						usedArgs[argsIndex] = true;
-						
-						widthExpr = (knownArgs)?
-							fmtArgs[argsIndex++]:
-							{ expr:ECheckType( { expr:EArray(_args, Context.makeExpr(argsIndex++, _args.pos)), pos:_args.pos }, TPath( { sub:null, params:[], pack:[], name:"Int" } )), pos:Context.currentPos() };
-						if (widthExpr == null)
-							Context.error("not enough arguments", _args.pos);
-						var error = false;
-						switch(widthExpr.expr)
-						{
-							case EConst(c):
-								switch(c)
-								{
-									case CInt(value):
-										args.width = Std.parseInt(value);
-									
-									case CIdent(_):
-										switch(Context.typeof(widthExpr))
-										{
-											case TInst(type, _):
-												error = type.get().name != "Int";
-											
-											case _:
-												error = true;
-										}
-									
-									case _:
-										error = true;
-								}
-							
-							case _:
-								switch(Context.typeof(widthExpr))
-								{
-									case TInst(type, _):
-										error = type.get().name != "Int";
-									
-									case _:
-										error = true;
-								}
-						}
-						if (error)
-							Context.error("width must be an integer", widthExpr.pos);
-					}
-					
-					var precisionExpr = Context.makeExpr(args.precision, Context.currentPos());
-					if (args.precision == null)
-					{
-						usedArgs[argsIndex] = true;
-						
-						precisionExpr = (knownArgs)?
-							fmtArgs[argsIndex++]:
-							{ expr:ECheckType( { expr:EArray(_args, Context.makeExpr(argsIndex++, _args.pos)), pos:_args.pos }, TPath( { sub:null, params:[], pack:[], name:"Int" } )), pos:Context.currentPos() };
-						if (precisionExpr == null)
-							Context.error("not enough arguments", _args.pos);
-						var error = false;
-						switch(precisionExpr.expr)
-						{
-							case EConst(c):
-								switch(c)
-								{
-									case CInt(value):
-										args.precision = Std.parseInt(value);
-									
-									case CIdent(_):
-										switch(Context.typeof(precisionExpr))
-										{
-											case TInst(type, _):
-												error = type.get().name != "Int";
-											
-											case _:
-												error = true;
-										}
-									
-									case _:
-										error = true;
-								}
-							
-							case _:
-								switch(Context.typeof(precisionExpr))
-								{
-									case TInst(type, _):
-										error = type.get().name != "Int";
-									
-									case _:
-										error = true;
-								}
-						}
-						if (error)
-							Context.error("precision must be an integer", precisionExpr.pos);
-					}
-					
-					var flagsIntExpr = Context.makeExpr(args.flags.toInt(), Context.currentPos());
-					
-					var argsExpr = { expr:EObjectDecl(
-							[
-								{field:"width", expr:widthExpr },
-								{field:"precision", expr:precisionExpr },
-								{field:"flags", expr:macro EnumFlags.ofInt($flagsIntExpr) },
-								{field:"pos", expr:Context.makeExpr(args.pos, Context.currentPos()) }
-							]), pos:Context.currentPos() };
-					
-					var valuePos = (args.pos > -1)?args.pos:argsIndex++;
-					var valueExpr = (knownArgs)?
-						fmtArgs[valuePos]:
-						{ expr:EArray(_args, Context.makeExpr(valuePos, _args.pos)), pos:_args.pos };
-					if (valueExpr == null)
-						Context.error("not enough arguments", _args.pos);
-						
-					usedArgs[valuePos] = true;
-					
-					var value:Dynamic;
-					
-					switch(valueExpr.expr)
-					{
-						case EConst(const):
-							switch(const)
-							{
-								case CFloat(cValue):
-									value = Std.parseFloat(cValue);
-								
-								case CInt(cValue):
-									value = Std.parseInt(cValue);
-								
-								case CString(cValue):
-									value = cValue;
-								
-								case _:
-									value = null;
-							}
-						
-						case _:
-							value = null;
-					}
-					
-					var preComputable = args.precision != null && args.width != null && value != null;
-					
-					var outputExpr:Expr;
-					
-					var typeName = function(e:Expr):String
-					{
-						switch(Context.typeof(e))
-						{
-							case TInst(t, _):
-								return (t.get().name);
-							
-							case _:
-								return null;
-						}
-					};
-					
-					var formatFunction:Dynamic->FormatArgs->String;
-					var formatFunctionName:String;
-					
-					switch (type)
-					{
-						case FmtFloat(floatType):
-							if (preComputable && !Std.is(value, Float) && !Std.is(value, Int))
-								Context.error("the value must be a number", valueExpr.pos);
-							
-							throw 'todo';
-							//formatFunction = formatFloatFuncHash.get(std.Type.enumIndex(floatType));
-							//formatFunctionName = formatFloatFuncNameHash.get(std.Type.enumIndex(floatType));
-						
-						case FmtInt(integerType):
-							if (preComputable && !Std.is(value, Int))
-								Context.error("the value must be an integer", valueExpr.pos);
-							//formatFunction = formatIntFuncHash.get(std.Type.enumIndex(integerType));
-							//formatFunctionName = formatIntFuncNameHash.get(std.Type.enumIndex(integerType));
-						
-						case FmtString:
-							
-							formatFunction = formatString;
-							formatFunctionName = "formatString";
-							
-							value = Std.string(value);
-							valueExpr = macro Std.string($valueExpr);
-						
-						case FmtPointer:
-							Context.error("specifier 'p' is not supported", _fmt.pos);
-						
-						case FmtNothing:
-							Context.error("specifier 'n' is not supported", _fmt.pos);
-					}
-					
-					if (preComputable)
-					{
-						var formatedValue = formatFunction(value, args);
-						outputExpr = { expr:EConst(CString(formatedValue)), pos:valueExpr.pos };
-					}
-					else
-						outputExpr = { expr:ECall( { expr:EField(instanceExpr, formatFunctionName), pos:Context.currentPos() }, [valueExpr, argsExpr]), pos:Context.currentPos() };
-					
-					outputArr.push(outputExpr);
-			}
-		}
-		
-		if (Context.defined("verbose") && knownArgs)
-		{
-			var lastUnused = false;
-			var unusedIntervals:Array<{min:Int, max:Int, file:String}> = new Array();
-			for (i in 0...usedArgs.length)
-			{
-				if (usedArgs[i] == false)
-				{
-					if (lastUnused)
-						unusedIntervals[unusedIntervals.length - 1].max = Context.getPosInfos(fmtArgs[i].pos).max;
-					else
-						unusedIntervals.push(Context.getPosInfos(fmtArgs[i].pos));
-					
-					lastUnused = true;
-				}
-				else
-					lastUnused = false;
-			}
-			
-			for (interval in unusedIntervals)
-				Context.warning("unused parameters", Context.makePosition(interval));
-		}
-		
-		var returnStrExpr:Expr = outputArr[outputArr.length - 1];
-		
-		for (_i in 1...outputArr.length)
-		{
-			var i = outputArr.length -1 - _i;
-			returnStrExpr = { expr:EBinop(OpAdd, outputArr[i], returnStrExpr), pos:Context.currentPos() };
-		}
-		
-		var returnBlock:Expr = macro
-		{
-			$returnStrExpr;
-		};
-		
-		return returnBlock;
 	}
 	
 	/**
@@ -530,7 +81,7 @@ class Printf
 			switch (tokens[i])
 			{
 				case Unknown(_, _):
-					throw new PrintfError("invalid format specifier");
+					throw new PrintfError("Invalid format specifier.");
 				
 				case Raw(string):
 					output.add(string);
@@ -555,6 +106,18 @@ class Printf
 							throw new PrintfError("invalid 'precision' argument");
 						tagArgs.precision = args[argIndex++];
 					}
+					
+					var value:Dynamic;
+					if (tagArgs.pos > -1)
+					{
+						if (tagArgs.pos > args.length - 1)
+							throw new PrintfError("argument index out of range");
+						value = args[tagArgs.pos];
+					}
+					else
+						value = args[argIndex++];
+					
+					if (value == null) value = "null";
 					
 					var f:Dynamic->FormatArgs->StringBuf->Void =
 					switch (type)
@@ -606,7 +169,6 @@ class Printf
 		return output.toString();
 	}
 	
-	//TODO use array
 	static function tokenize(fmt:String, output:Array<FormatToken>):Int
 	{
 		var i = 0, c = 0, n = 0;
@@ -806,8 +368,6 @@ class Printf
 		if (buf.length > 0) output[n++] = Raw(buf.toString());
 		return n;
 	}
-	
-	
 	
 	static function formatBinary(value:Int, args:FormatArgs, buf:StringBuf)
 	{
@@ -1212,7 +772,6 @@ class Printf
 		var w = args.width;
 		
 		var s;
-		
 		if (p == 0)
 		{
 			s = Std.string(iabs(Math.round(value)));
