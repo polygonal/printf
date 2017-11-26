@@ -1,5 +1,6 @@
 /.vscode
 /*.hxproj
+/debug.bat
 /TODO
 api/**
 bin/**
