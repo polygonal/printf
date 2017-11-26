@@ -341,6 +341,8 @@ class Printf
 	
 	static function formatBinary(value:Int, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x) buf.add(x);
+		
 		var f = args.flags;
 		var p = args.precision;
 		var w = args.width;
@@ -367,37 +369,35 @@ class Printf
 		
 		if (f.has(Minus))
 		{
-			if (f.has(Sharp)) buf.add("0b");
-			
-			if (p > l) for (i in 0...p - l) buf.add("0");
+			if (f.has(Sharp)) add("0b");
+			if (p > l) for (i in 0...p - l) add("0");
 			while (--m > -1) buf.addChar("0".code + tmp[m]);
 			if (f.has(Sharp)) w -= 2;
 			if (p > l) l = p;
-			if (w > l) for (i in 0...w - l) buf.add(" ");
+			if (w > l) for (i in 0...w - l) add(" ");
 		}
 		else
 		{
 			var k = l;
 			if (p > k) k = p;
-			
 			if (f.has(Sharp)) w -= 2;
-			
 			if (w > k)
 			{
 				if (f.has(Zero) && p == 1)
-					for (i in 0...w - k) buf.add("0");
+					for (i in 0...w - k) add("0");
 				else
-					for (i in 0...w - k) buf.add(" ");
+					for (i in 0...w - k) add(" ");
 			}
-			
-			if (f.has(Sharp)) buf.add("0b");
-			if (p > l) for (i in 0...p - l) buf.add("0");
+			if (f.has(Sharp)) add("0b");
+			if (p > l) for (i in 0...p - l) add("0");
 			while (--m > -1) buf.addChar("0".code + tmp[m]);
 		}
 	}
 	
 	static function formatOctal(value:Int, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x) buf.add(x);
+		
 		var f = args.flags;
 		var p = args.precision;
 		var w = args.width;
@@ -408,7 +408,7 @@ class Printf
 		{
 			if (p == 0)
 			{
-				buf.add(f.has(Sharp) ? "0" : "");
+				add(f.has(Sharp) ? "0" : "");
 				return;
 			}
 			f.unset(Sharp);
@@ -439,15 +439,15 @@ class Printf
 		{
 			if (f.has(Sharp))
 			{
-				buf.add("0");
+				add("0");
 				l++;
 			}
-			if (p > l) for (i in 0...p - l) buf.add("0");
+			if (p > l) for (i in 0...p - l) add("0");
 			
-			while (--m > -1) buf.addChar("0".code + tmp[m]);
+			while (--m > -1) add(String.fromCharCode("0".code + tmp[m]));
 			
 			if (p > l) l = p;
-			if (w > l) for (i in 0...w - l) buf.add(" ");
+			if (w > l) for (i in 0...w - l) add(" ");
 		}
 		else
 		{
@@ -458,19 +458,21 @@ class Printf
 			if (w > k)
 			{
 				if (f.has(Zero))
-					for (i in 0...w - k) buf.add("0");
+					for (i in 0...w - k) add("0");
 				else
-					for (i in 0...w - k) buf.add(" ");
+					for (i in 0...w - k) add(" ");
 			}
-			if (f.has(Sharp)) buf.add("0");
-			if (p > l) for (i in 0...p - l) buf.add("0");
+			if (f.has(Sharp)) add("0");
+			if (p > l) for (i in 0...p - l) add("0");
 			
-			while (--m > -1) buf.addChar("0".code + tmp[m]);
+			while (--m > -1) add(String.fromCharCode("0".code + tmp[m]));
 		}
 	}
 	
 	static function formatHexadecimal(value:Int, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x) buf.add(x);
+		
 		var f = args.flags;
 		var p = args.precision;
 		var w = args.width;
@@ -502,9 +504,9 @@ class Printf
 			{
 				var v = tmp[m];
 				if (v < 10)
-					buf.addChar("0".code + v);
+					add(String.fromCharCode("0".code + v));
 				else
-					buf.addChar(a + v - 10);
+					add(String.fromCharCode(a + (v - 10)));
 			}
 		}
 		
@@ -513,18 +515,18 @@ class Printf
 			if (f.has(Sharp))
 			{
 				if (f.has(UpperCase))
-					buf.add("0X");
+					add("0X");
 				else
-					buf.add("0x");
+					add("0x");
 			}
 			
-			if (p > l) for (i in 0...p - l) buf.add("0");
+			if (p > l) for (i in 0...p - l) add("0");
 			
 			addNumber();
 			
 			if (f.has(Sharp)) w -= 2;
 			if (p > l) l = p;
-			if (w > l) for (i in 0...w - l) buf.add(" ");
+			if (w > l) for (i in 0...w - l) add(" ");
 		}
 		else
 		{
@@ -536,20 +538,20 @@ class Printf
 			if (w > k)
 			{
 				if (f.has(Zero) && p == 1)
-					for (i in 0...w - k) buf.add("0");
+					for (i in 0...w - k) add("0");
 				else
-					for (i in 0...w - k) buf.add(" ");
+					for (i in 0...w - k) add(" ");
 			}
 			
 			if (f.has(Sharp))
 			{
 				if (f.has(UpperCase))
-					buf.add("0X");
+					add("0X");
 				else
-					buf.add("0x");
+					add("0x");
 			}
 			
-			if (p > l) for (i in 0...p - l) buf.add("0");
+			if (p > l) for (i in 0...p - l) add("0");
 			
 			addNumber();
 		}
@@ -557,6 +559,8 @@ class Printf
 	
 	static function formatSignedDecimal(value:Int, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x) buf.add(x);
+		
 		var f = args.flags;
 		var p = args.precision;
 		var w = args.width;
@@ -567,54 +571,58 @@ class Printf
 		var l = s.length;
 		var sign =
 		if (value < 0)
-			"-".code;
+			"-";
 		else
 		{
 			if (f.has(Plus))
-				"+".code;
+				"+";
 			else
 			if (f.has(Space))
-				" ".code;
+				" ";
 			else
-				0;
+				null;
 		}
+		
+		var hasSign = sign != null;
 		
 		if (f.has(Minus))
 		{
-			if (sign > 0) buf.addChar(sign);
-			if (p > l) for (i in 0...p - l) buf.add("0");
+			if (hasSign) add(sign);
+			if (p > l) for (i in 0...p - l) add("0");
 			
-			buf.add(s);
+			add(s);
 			
 			if (p > l) l = p;
-			l += (sign > 0 ? 1 : 0);
-			if (w > l) for (i in 0...w - l) buf.add(" ");
+			l += (hasSign ? 1 : 0);
+			if (w > l) for (i in 0...w - l) add(" ");
 		}
 		else
 		{
-			var k = l + (sign > 0 ? 1 : 0);
+			var k = l + (hasSign ? 1 : 0);
 			if (p > k) k = p;
 			if (w > k)
 			{
 				if (f.has(Zero))
 				{
-					if (sign > 0) buf.addChar(sign);
-					for (i in 0...w - k) buf.add("0");
+					if (hasSign) add(sign);
+					for (i in 0...w - k) add("0");
 				}
 				else
-					for (i in 0...w - k) buf.add(" ");
+					for (i in 0...w - k) add(" ");
 			}
 			
-			if (sign > 0 && !f.has(Zero))
-				buf.addChar(sign);
+			if (hasSign && !f.has(Zero))
+				add(sign);
 			
-			if (p > l) for (i in 0...p - l) buf.add("0");
-			buf.add(s);
+			if (p > l) for (i in 0...p - l) add("0");
+			add(s);
 		}
 	}
 	
 	static function formatUnsignedDecimal(value:Int, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x) buf.add(x);
+		
 		if (value >= 0)
 		{
 			formatSignedDecimal(value, args, buf);
@@ -630,12 +638,10 @@ class Printf
 		
 		if (f.has(Minus))
 		{
-			if (p > l) for (i in 0...p - l) buf.add("0");
-			
-			buf.add(s);
-			
+			if (p > l) for (i in 0...p - l) add("0");
+			add(s);
 			if (p > l) l = p;
-			if (w > l) for (i in 0...w - l) buf.add(" ");
+			if (w > l) for (i in 0...w - l) add(" ");
 		}
 		else
 		{
@@ -644,13 +650,12 @@ class Printf
 			if (w > k)
 			{
 				if (f.has(Zero))
-					for (i in 0...w - k) buf.add("0");
+					for (i in 0...w - k) add("0");
 				else
-					for (i in 0...w - k) buf.add(" ");
+					for (i in 0...w - k) add(" ");
 			}
-			
-			if (p > l) for (i in 0...p - l) buf.add("0");
-			buf.add(s);
+			if (p > l) for (i in 0...p - l) add("0");
+			add(s);
 		}
 	}
 	
@@ -677,6 +682,8 @@ class Printf
 	
 	static function formatScientific(value:Float, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x) buf.add(x);
+		
 		var f = args.flags;
 		var p = args.precision;
 		if (p == -1) p = DEFAULT_PRECISION;
@@ -727,12 +734,12 @@ class Printf
 		if (printSign && f.has(Zero))
 			s = (sign == -1 ? "-" : (f.has(Plus) ? "+" : " ")) + s;
 		
-		buf.add(s);
+		add(s);
 	}
 	
 	static function formatFloat(value:Float, args:FormatArgs, buf:StringBuf)
 	{
-		inline function add(x:String) buf.add(x);
+		inline function add(x) buf.add(x);
 		
 		var f = args.flags;
 		var p = args.precision;
@@ -837,20 +844,25 @@ class Printf
 	
 	static function formatCharacter(x:Int, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x) buf.add(x);
+		
 		if (args.flags.has(Minus))
 		{
-			buf.add(String.fromCharCode(x));
-			for (i in 0...args.width - 1) buf.add(" ");
+			add(String.fromCharCode(x));
+			for (i in 0...args.width - 1) add(" ");
 		}
 		else
 		{
-			for (i in 0...args.width - 1) buf.add(" ");
-			buf.add(String.fromCharCode(x));
+			for (i in 0...args.width - 1) add(" ");
+			add(String.fromCharCode(x));
 		}
 	}
 	
 	static function formatString(value:String, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x) buf.add(x);
+		inline function addSub(x, p, l) buf.addSub(x, p, l);
+		
 		var l = value.length;
 		
 		var p = args.precision;
@@ -859,21 +871,21 @@ class Printf
 		{
 			if (p != -1)
 			{
-				buf.addSub(value, 0, p);
+				addSub(value, 0, p);
 				l = p;
 			}
 			else
-				buf.add(value);
-			for (i in 0...args.width - l) buf.add(" ");
+				add(value);
+			for (i in 0...args.width - l) add(" ");
 		}
 		else
 		{
 			if (p != -1) l = p;
-			for (i in 0...args.width - l) buf.add(" ");
+			for (i in 0...args.width - l) add(" ");
 			if (p != -1)
-				buf.addSub(value, 0, p);
+				addSub(value, 0, p);
 			else
-				buf.add(value);
+				add(value);
 		}
 	}
 	
