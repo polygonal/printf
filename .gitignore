@@ -1,8 +1,11 @@
-bin/**
+/.vscode
+/*.hxproj
+/TODO
 api/**
+bin/**
 build/**
-sandbox/**
-obj/**
-tmp/**
 dump/**
-*.hxproj
+hxml/**
+obj/**
+sandbox/**
+tmp/**
