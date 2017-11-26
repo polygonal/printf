@@ -21,12 +21,6 @@ package de.polygonal;
 import haxe.EnumFlags;
 import haxe.ds.Vector;
 
-#if macro
-import haxe.macro.Expr;
-import haxe.macro.Context;
-import haxe.macro.Type;
-#end
-
 /**
 	C printf implementation
 	
@@ -142,7 +136,7 @@ class Printf
 							}
 						
 						case FmtString:
-							formatString;
+							formatString(value, tagArgs, output);
 						
 						case FmtPointer:
 							throw new PrintfError("specifier 'p' is not supported");
@@ -231,19 +225,9 @@ class Printf
 					
 					//check for conflicting flags
 					if (params.flags.has(Minus) && params.flags.has(Zero))
-					{
-						#if macro
-						Context.warning("warning: `0' flag ignored with '-' flag in printf format", Context.currentPos());
-						#end
 						params.flags.unset(Zero);
-					}
 					if (params.flags.has(Space) && params.flags.has(Plus))
-					{
-						#if macro
-						Context.warning("warning: ` ' flag ignored with '+' flag in printf format", Context.currentPos());
-						#end
 						params.flags.unset(Space);
-					}
 					
 					//read width: (number) or "*"
 					if (c == "*".code)
@@ -401,7 +385,6 @@ class Printf
 			
 			if (p > l) for (i in 0...p - l) buf.add("0");
 			while (--m > -1) buf.addChar("0".code + tmp[m]);
-			var k = l;
 			if (f.has(Sharp)) w -= 2;
 			if (p > l) l = p;
 			if (w > l) for (i in 0...w - l) buf.add(" ");
@@ -477,7 +460,6 @@ class Printf
 			
 			while (--m > -1) buf.addChar("0".code + tmp[m]);
 			
-			var k = l;
 			if (p > l) l = p;
 			if (w > l) for (i in 0...w - l) buf.add(" ");
 		}
@@ -554,7 +536,6 @@ class Printf
 			
 			addNumber();
 			
-			var k = l;
 			if (f.has(Sharp)) w -= 2;
 			if (p > l) l = p;
 			if (w > l) for (i in 0...w - l) buf.add(" ");
@@ -619,7 +600,6 @@ class Printf
 			
 			buf.add(s);
 			
-			var k = l;
 			if (p > l) l = p;
 			l += (sign > 0 ? 1 : 0);
 			if (w > l) for (i in 0...w - l) buf.add(" ");
@@ -870,9 +850,6 @@ class Printf
 		}
 	}
 	
-	
-	
-	
 	static function formatCharacter(x:Int, args:FormatArgs, buf:StringBuf)
 	{
 		if (args.flags.has(Minus))
@@ -891,7 +868,6 @@ class Printf
 	{
 		var l = value.length;
 		
-		var s = value;
 		var p = args.precision;
 		
 		if (args.flags.has(Minus))
@@ -915,10 +891,6 @@ class Printf
 				buf.add(value);
 		}
 	}
-	
-	
-	
-	
 	
 	static inline function pad(s:String, l:Int, type:Int, dir:Int):String
 	{
