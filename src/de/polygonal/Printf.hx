@@ -757,7 +757,7 @@ class Printf
 			s = untyped __java__("String.format({0}, {1})", '%.${p}f', value);
 			#elseif cs
 			var separator:String = untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator");
-			untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator = """);
+			untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator = \"\"");
 			s = untyped value.ToString("N" + p);
 			untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator = separator");
 			#else
