@@ -113,26 +113,25 @@ class Printf
 					
 					if (value == null) value = "null";
 					
-					var f:Dynamic->FormatArgs->StringBuf->Void =
 					switch (type)
 					{
 						case FmtFloat(floatType):
 							switch (floatType)
 							{
-								case FNormal: formatFloat;
-								case FScientific: formatScientific;
-								case FNatural: formatNaturalFloat;
+								case FNormal: formatFloat(value, tagArgs, output);
+								case FScientific: formatScientific(value, tagArgs, output);
+								case FNatural: formatNaturalFloat(value, tagArgs, output);
 							}
 						
 						case FmtInt(intType):
 							switch (intType)
 							{
-								case ICharacter: formatCharacter;
-								case ISignedDecimal: formatSignedDecimal;
-								case IUnsignedDecimal: formatUnsignedDecimal;
-								case IOctal: formatOctal;
-								case IHex: formatHexadecimal;
-								case IBin: formatBinary;
+								case ICharacter: formatCharacter(value, tagArgs, output);
+								case ISignedDecimal: formatSignedDecimal(value, tagArgs, output);
+								case IUnsignedDecimal: formatUnsignedDecimal(value, tagArgs, output);
+								case IOctal: formatOctal(value, tagArgs, output);
+								case IHex: formatHexadecimal(value, tagArgs, output);
+								case IBin: formatBinary(value, tagArgs, output);
 							}
 						
 						case FmtString:
@@ -144,19 +143,6 @@ class Printf
 						case FmtNothing:
 							throw new PrintfError("specifier 'n' is not supported");
 					};
-					
-					var value;
-					if (tagArgs.pos > -1)
-					{
-						if (tagArgs.pos > args.length - 1)
-							throw new PrintfError("argument index out of range");
-						value = args[tagArgs.pos];
-					}
-					else
-						value = args[argIndex++];
-					
-					if (value == null) value = "null";
-					f(value, tagArgs, output);
 			}
 		}
 		
