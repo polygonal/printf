@@ -12,12 +12,12 @@ See [cplusplus.com](http://www.cplusplus.com/reference/clibrary/cstdio/printf/) 
 
 ````Haxe
 Printf.format("%b", [7]); //outputs "111"
-Printf.format("%#b", [0x100]); //outputs "b100000000"
+Printf.format("%#b", [0x100]); //outputs "0b100000000"
 ````
 
 ## Changelog
 
-### 1.1 (released 2017-11-xx)
+### 1.1 (wip)
 
 - various fixes and optimizations.
 
