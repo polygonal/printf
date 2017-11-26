@@ -739,6 +739,8 @@ class Printf
 		if (p == -1) p = DEFAULT_PRECISION;
 		var w = args.width;
 		
+		var isNegative = value < 0;
+		
 		var s;
 		if (p == 0)
 		{
@@ -786,10 +788,10 @@ class Printf
 		var l = s.length;
 		
 		//remove minus sign, add later in case of zero-padding
-		if (value < 0) s = s.substr(1);
+		if (isNegative && s.indexOf("-") > -1) s = s.substr(1);
 		
 		var sign = null;
-		if (f.has(Plus) && value >= 0)
+		if (f.has(Plus) && !isNegative)
 		{
 			sign = "+";
 			l++;
@@ -801,16 +803,13 @@ class Printf
 			l++;
 		}
 		else
-		if (value < 0)
-		{
+		if (isNegative)
 			sign = "-";
-		}
 		
-		var bSign = sign != null;
-		
+		var hasSign = sign != null;
 		if (f.has(Minus))
 		{
-			if (bSign) add(sign);
+			if (hasSign) add(sign);
 			add(s);
 			if (w > l) for (i in 0...w - l) add(" ");
 		}
@@ -820,10 +819,10 @@ class Printf
 			{
 				if (f.has(Zero))
 				{
-					if (bSign)
+					if (hasSign)
 					{
 						add(sign);
-						bSign = false;
+						hasSign = false;
 					}
 					for (i in 0...w - l) add("0");
 				}
@@ -831,7 +830,7 @@ class Printf
 					for (i in 0...w - l) add(" ");
 			}
 			
-			if (bSign) add(sign);
+			if (hasSign) add(sign);
 			add(s);
 		}
 	}
