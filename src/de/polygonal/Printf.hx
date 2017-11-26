@@ -766,6 +766,8 @@ class Printf
 	
 	static function formatFloat(value:Float, args:FormatArgs, buf:StringBuf)
 	{
+		inline function add(x:String) buf.add(x);
+		
 		var f = args.flags;
 		var p = args.precision;
 		if (p == -1) p = DEFAULT_PRECISION;
@@ -774,15 +776,22 @@ class Printf
 		var s;
 		if (p == 0)
 		{
-			s = Std.string(iabs(Math.round(value)));
+			s = Std.string(Math.round(value));
 			if (f.has(Sharp)) s += ".";
 		}
 		else
 		{
-			#if flash
+			#if (flash || js)
 			s = untyped value.toFixed(p);
-			#elseif js
-			s = untyped value.toFixed(p);
+			#elseif php
+			s = untyped __call__("number_format", value, p, ".", "");
+			#elseif java
+			s = untyped __java__("String.format({0}, {1})", '%.${p}f', value);
+			#elseif cs
+			var separator:String = untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator");
+			untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator = """);
+			s = untyped value.ToString("N" + p);
+			untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator = separator");
 			#else
 			value = roundTo(value, Math.pow(.1, p));
 			if (Math.isNaN(value))
@@ -807,25 +816,58 @@ class Printf
 			#end
 		}
 		
-		if (f.has(Zero))
+		//string length includes minus sign
+		var l = s.length;
+		
+		//remove minus sign, add later in case of zero-padding
+		if (value < 0) s = s.substr(1);
+		
+		var sign = null;
+		if (f.has(Plus) && value >= 0)
 		{
-			if (value < 0 || f.has(Plus)) w--;
-			if (value > 0 && f.has(Space)) w--;
-			s = pad(s, w, PAD_0, -1);
+			sign = "+";
+			l++;
+		}
+		else
+		if (f.has(Space))
+		{
+			sign = " ";
+			l++;
+		}
+		else
+		if (value < 0)
+		{
+			sign = "-";
 		}
 		
-		if (value >= 0)
+		var bSign = sign != null;
+		
+		if (f.has(Minus))
 		{
-			if (f.has(Plus))
-				s = "+" + s;
-			else
-			if (f.has(Space))
-				s = " " + s;
+			if (bSign) add(sign);
+			add(s);
+			if (w > l) for (i in 0...w - l) add(" ");
 		}
-		
-		s = pad(s, w, PAD_SPACE, f.has(Minus) ? 1 : -1);
-		
-		buf.add(s);
+		else
+		{
+			if (w > l)
+			{
+				if (f.has(Zero))
+				{
+					if (bSign)
+					{
+						add(sign);
+						bSign = false;
+					}
+					for (i in 0...w - l) add("0");
+				}
+				else
+					for (i in 0...w - l) add(" ");
+			}
+			
+			if (bSign) add(sign);
+			add(s);
+		}
 	}
 	
 	
