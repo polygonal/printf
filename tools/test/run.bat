@@ -33,10 +33,13 @@ neko %CWD%\main.n ^
 -dst %CWD%\bin ^
 -swf default ^
 -js default ^
+-php default ^
 -neko default ^
 -python default ^
--cpp default
+-cpp default ^
+-java default ^
+-cs default
 
 cd %CWD%
 del main.n
-sleep 3
+pause
