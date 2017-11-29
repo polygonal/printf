@@ -762,6 +762,7 @@ class Printf
 			s = untyped __call__("number_format", value, p, ".", "");
 			#elseif java
 			s = untyped __java__("String.format({0}, {1})", '%.${p}f', value);
+			s = ~/,/.replace(s, ".");
 			#elseif cs
 			var separator:String = untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator");
 			untyped __cs__("System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator = \"\"");
