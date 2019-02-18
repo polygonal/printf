@@ -1,5 +1,5 @@
-﻿/*
-Copyright (c) 2016 Michael Baczynski, http://www.polygonal.de
+/*
+Copyright (c) 2019 Michael Baczynski, http://www.polygonal.de
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -16,10 +16,67 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-package de.polygonal;
+package polygonal;
 
 import haxe.EnumFlags;
 import haxe.ds.Vector;
+
+private enum FormatFlag
+{
+	Minus;
+	Plus;
+	Space;
+	Sharp;
+	Zero;
+	LengthH;
+	LengthUpperCaseL;
+	LengthLowerCaseL;
+	UpperCase;
+}
+
+@:publicFields
+@:structInit
+private class FormatArgs
+{
+	var flags:EnumFlags<FormatFlag>;
+	var pos:Int;
+	var width:Null<Int>;
+	var precision:Null<Int>;
+}
+
+private enum FormatToken
+{
+	Raw(string:String);
+	Tag(type:FormatDataType, args:FormatArgs);
+	Property(name:String);
+	Unknown(string:String, pos:Int);
+}
+
+private enum FormatDataType
+{
+	FmtInt(type:IntType);
+	FmtFloat(floatType:FloatType);
+	FmtString;
+	FmtPointer;
+	FmtNothing;
+}
+
+private enum IntType
+{
+	ICharacter;
+	ISignedDecimal;
+	IUnsignedDecimal;
+	IOctal;
+	IHex;
+	IBin;
+}
+
+private enum FloatType
+{
+	FNormal;
+	FScientific;
+	FNatural;
+}
 
 /**
 	C printf implementation
@@ -661,23 +718,27 @@ class Printf
 	
 	static function formatNaturalFloat(value:Float, args:FormatArgs, buf:StringBuf)
 	{
-		//TODO: precompute lengths
-		/*args.precision = 0;
+		inline function add(x) buf.add(x);
 		
-		var formatedFloat = formatFloat(value, args, buf);
-		var formatedScientific = formatScientific(value, args, buf);
-		if (args.flags.has(Sharp))
-		{
-			if (formatedFloat.indexOf(".") != -1)
-			{
-				var pos = formatedFloat.length -1;
-				while (formatedFloat.charCodeAt(pos) == "0".code) pos--;
-				formatedFloat = formatedFloat.substr(0, pos);
-			}
-		}
+		//TODO: precompute lengths
+		// args.precision = 0;
+		
+		var tmp:StringBuf;
+		
+		tmp = new StringBuf();
+		formatFloat(value, args, tmp);
+		var formatedFloat = tmp.toString();
+		trace('formatedFloat ' + formatedFloat);
+		
+		tmp = new StringBuf();
+		formatScientific(value, args, tmp);
+		var formatedScientific = tmp.toString();
+		
+		trace('formatedScientific ' + formatedScientific);
+		
 		var s = (formatedFloat.length <= formatedScientific.length) ? formatedFloat : formatedScientific;
 		
-		buf.add(s);*/
+		add(s);
 	}
 	
 	static function formatScientific(value:Float, args:FormatArgs, buf:StringBuf)
@@ -933,61 +994,4 @@ class PrintfError
 	{
 		return message;
 	}
-}
-
-@:publicFields
-@:structInit
-private class FormatArgs
-{
-	var flags:EnumFlags<FormatFlag>;
-	var pos:Int;
-	var width:Null<Int>;
-	var precision:Null<Int>;
-}
-
-private enum FormatFlag
-{
-	Minus;
-	Plus;
-	Space;
-	Sharp;
-	Zero;
-	LengthH;
-	LengthUpperCaseL;
-	LengthLowerCaseL;
-	UpperCase;
-}
-
-private enum FormatToken
-{
-	Raw(string:String);
-	Tag(type:FormatDataType, args:FormatArgs);
-	Property(name:String);
-	Unknown(string:String, pos:Int);
-}
-
-private enum FormatDataType
-{
-	FmtInt(type:IntType);
-	FmtFloat(floatType:FloatType);
-	FmtString;
-	FmtPointer;
-	FmtNothing;
-}
-
-private enum IntType
-{
-	ICharacter;
-	ISignedDecimal;
-	IUnsignedDecimal;
-	IOctal;
-	IHex;
-	IBin;
-}
-
-private enum FloatType
-{
-	FNormal;
-	FScientific;
-	FNatural;
 }
