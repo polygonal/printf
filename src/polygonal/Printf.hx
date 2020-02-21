@@ -192,7 +192,7 @@ class Printf
 							}
 						
 						case FmtString:
-							formatString(value, tagArgs, output);
+							formatString(Std.string(value), tagArgs, output);
 						
 						case FmtPointer:
 							throw new PrintfError("specifier 'p' is not supported");
