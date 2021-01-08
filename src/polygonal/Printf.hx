@@ -866,7 +866,7 @@ class Printf
 			l++;
 		}
 		else
-		if (f.has(Space))
+		if (f.has(Space) && !isNegative)
 		{
 			sign = " ";
 			l++;
