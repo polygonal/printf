@@ -16,8 +16,6 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-package polygonal;
-
 import haxe.EnumFlags;
 import haxe.ds.Vector;
 
@@ -823,6 +821,10 @@ class Printf
 			else
 				s = untyped value.toFixed(p);
 			#elseif php
+			
+			// TODO
+			// untyped __call__ is deprecated. Use php.Syntax instead.
+			
 			s = untyped __call__("number_format", value, p, ".", "");
 			#elseif java
 			s = untyped __java__("String.format({0}, {1})", '%.${p}f', value);

@@ -1,4 +1,5 @@
-﻿import de.polygonal.Printf.format as f;
+﻿import Printf;
+import Printf.format as f;
 
 //http://www.cplusplus.com/reference/cstdio/printf/
 class TestPrintf extends haxe.unit.TestCase
