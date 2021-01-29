@@ -818,7 +818,10 @@ class Printf
 		else
 		{
 			#if (flash || js)
-			s = untyped value.toFixed(p);
+			if (Math.isNaN(value))
+				s = "NaN";
+			else
+				s = untyped value.toFixed(p);
 			#elseif php
 			s = untyped __call__("number_format", value, p, ".", "");
 			#elseif java
